@@ -1,0 +1,104 @@
+generator client {
+    provider = "prisma-client"
+    output   = "../src/generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  KOORDINATOR
+  ANGGOTA
+}
+
+enum ScheduleType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum SessionStatus {
+  DRAFT
+  COMPLETED
+  COMPLETED_WITH_ISSUE
+  NOT_EXECUTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  username      String    @unique
+  password      String
+  role          Role      @default(ANGGOTA)
+  telegramId    String?   @unique
+  divisionId    String?
+  division      Division? @relation(fields: [divisionId], references: [id])
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Division {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  users       User[]
+  programs    Program[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Program {
+  id            String             @id @default(cuid())
+  name          String
+  description   String?
+  scheduleType  ScheduleType
+  scheduleDays  Int[]              // 0=Sunday, 1=Monday, etc.
+  scheduleTime  String?            // Format: "HH:mm"
+  minPhotos     Int                @default(1)
+  isActive      Boolean            @default(true)
+  divisionId    String
+  division      Division           @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  schedules     ScheduleInstance[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model ScheduleInstance {
+  id        String    @id @default(cuid())
+  date      DateTime  @db.Date
+  programId String
+  program   Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+
+  @@unique([programId, date])
+}
+
+model Session {
+  id            String        @id @default(cuid())
+  status        SessionStatus @default(DRAFT)
+  startedAt     DateTime      @default(now())
+  submittedAt   DateTime?
+  issueNote     String?
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  scheduleId    String
+  schedule      ScheduleInstance @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  photos        Photo[]
+  isAutoCreated Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Photo {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}

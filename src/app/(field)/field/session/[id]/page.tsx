@@ -1,0 +1,391 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { z } from "zod";
+import {
+  Camera,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Send,
+  Loader2,
+  Image as ImageIcon,
+  X,
+} from "lucide-react";
+
+import { useSession, useSubmitSession } from "@/hooks/use-sessions";
+import { formatTime } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { PhotoCaptureDialog } from "@/components/field/photo-capture";
+
+const submitSchema = z.object({
+  status: z.enum(["COMPLETED", "COMPLETED_WITH_ISSUE"]),
+  issueNote: z.string().optional(),
+});
+
+type SubmitInput = z.infer<typeof submitSchema>;
+
+export default function SessionDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const sessionId = params.id as string;
+
+  const { data: session, isLoading, refetch } = useSession(sessionId);
+  const submitMutation = useSubmitSession();
+
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [photoCaptureOpen, setPhotoCaptureOpen] = useState(false);
+  const [hasIssue, setHasIssue] = useState(false);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+
+  const form = useForm<SubmitInput>({
+    resolver: zodResolver(submitSchema),
+    defaultValues: {
+      status: "COMPLETED",
+      issueNote: "",
+    },
+  });
+
+  async function handlePhotoCapture(imageData: string, caption: string) {
+    const res = await fetch(`/api/sessions/${sessionId}/photos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageData, caption }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || "Failed to upload photo");
+    }
+
+    await refetch();
+  }
+
+  async function handleDeletePhoto(photoId: string) {
+    if (!confirm("Hapus foto ini?")) return;
+
+    setDeletingPhotoId(photoId);
+    try {
+      const res = await fetch(
+        `/api/sessions/${sessionId}/photos?photoId=${photoId}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete photo");
+      }
+
+      toast.success("Foto berhasil dihapus");
+      await refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal hapus foto");
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  }
+
+  async function onSubmit(data: SubmitInput) {
+    try {
+      if (data.status === "COMPLETED_WITH_ISSUE" && !data.issueNote?.trim()) {
+        toast.error("Catatan kendala wajib diisi");
+        return;
+      }
+
+      await submitMutation.mutateAsync({
+        id: sessionId,
+        status: data.status,
+        issueNote: data.status === "COMPLETED_WITH_ISSUE" ? data.issueNote : undefined,
+      });
+
+      toast.success("Sesi berhasil disubmit!");
+      setSubmitDialogOpen(false);
+      await refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal submit sesi");
+    }
+  }
+
+  function handleOpenSubmit(withIssue: boolean) {
+    setHasIssue(withIssue);
+    form.setValue("status", withIssue ? "COMPLETED_WITH_ISSUE" : "COMPLETED");
+    setSubmitDialogOpen(true);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-muted-foreground">Sesi tidak ditemukan</p>
+          <Button variant="link" onClick={() => router.push("/field/today")}>
+            Kembali
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isSubmitted = session.status !== "DRAFT";
+  const photoCount = session.photos.length;
+  const minPhotos = session.schedule.program.minPhotos;
+  const canSubmit = !isSubmitted && photoCount >= minPhotos;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle>{session.schedule.program.name}</CardTitle>
+              <CardDescription>
+                {session.schedule.program.division.name}
+              </CardDescription>
+            </div>
+            <Badge
+              variant={
+                session.status === "COMPLETED"
+                  ? "default"
+                  : session.status === "COMPLETED_WITH_ISSUE"
+                  ? "secondary"
+                  : session.status === "NOT_EXECUTED"
+                  ? "destructive"
+                  : "outline"
+              }
+            >
+              {session.status === "DRAFT"
+                ? "Draft"
+                : session.status === "COMPLETED"
+                ? "Selesai"
+                : session.status === "COMPLETED_WITH_ISSUE"
+                ? "Selesai (Kendala)"
+                : "Tidak Terlaksana"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span>
+              Mulai: {formatTime(session.startedAt)}
+              {session.submittedAt && ` • Selesai: ${formatTime(session.submittedAt)}`}
+            </span>
+          </div>
+          {session.issueNote && (
+            <div className="rounded-lg bg-orange-50 p-3 text-orange-800">
+              <p className="text-xs font-medium mb-1">Kendala:</p>
+              <p className="text-sm">{session.issueNote}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Photos Section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Foto Bukti</CardTitle>
+            <Badge variant={photoCount >= minPhotos ? "default" : "secondary"}>
+              {photoCount}/{minPhotos} foto
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {session.photos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed rounded-lg">
+              <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-2" />
+              <p className="text-muted-foreground text-sm">Belum ada foto</p>
+              {!isSubmitted && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload minimal {minPhotos} foto untuk submit
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {session.photos.map((photo) => (
+                <div
+                  key={photo.id}
+                  className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
+                >
+                  <img
+                    src={photo.url}
+                    alt={photo.caption || "Photo"}
+                    className="w-full h-full object-cover"
+                  />
+                  {!isSubmitted && (
+                    <button
+                      onClick={() => handleDeletePhoto(photo.id)}
+                      disabled={deletingPhotoId === photo.id}
+                      className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      {deletingPhotoId === photo.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <X className="h-3 w-3" />
+                      )}
+                    </button>
+                  )}
+                  {photo.caption && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1.5 line-clamp-1">
+                      {photo.caption}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload Button */}
+          {!isSubmitted && (
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setPhotoCaptureOpen(true)}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Ambil / Upload Foto
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Submit Actions */}
+      {!isSubmitted && (
+        <div className="space-y-2">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={() => handleOpenSubmit(false)}
+            disabled={!canSubmit}
+          >
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Submit - Terlaksana
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            size="lg"
+            onClick={() => handleOpenSubmit(true)}
+            disabled={!canSubmit}
+          >
+            <AlertTriangle className="mr-2 h-4 w-4" />
+            Submit - Ada Kendala
+          </Button>
+          {!canSubmit && (
+            <p className="text-xs text-center text-muted-foreground">
+              Upload minimal {minPhotos} foto untuk dapat submit
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Photo Capture Dialog */}
+      <PhotoCaptureDialog
+        open={photoCaptureOpen}
+        onOpenChange={setPhotoCaptureOpen}
+        onCapture={handlePhotoCapture}
+      />
+
+      {/* Submit Dialog */}
+      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {hasIssue ? "Submit dengan Kendala" : "Konfirmasi Submit"}
+            </DialogTitle>
+            <DialogDescription>
+              {hasIssue
+                ? "Jelaskan kendala yang terjadi saat pelaksanaan"
+                : "Pastikan semua foto sudah diupload sebelum submit"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {hasIssue && (
+                <FormField
+                  control={form.control}
+                  name="issueNote"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Catatan Kendala</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Jelaskan kendala yang terjadi..."
+                          rows={4}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSubmitDialogOpen(false)}
+                >
+                  Batal
+                </Button>
+                <Button type="submit" disabled={submitMutation.isPending}>
+                  {submitMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Submit
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
