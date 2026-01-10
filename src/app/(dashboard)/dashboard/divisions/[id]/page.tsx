@@ -16,12 +16,32 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-const scheduleTypeLabels: Record<string, string> = {
-  DAILY: "Harian",
-  WEEKLY: "Mingguan",
-  MONTHLY: "Bulanan",
-  CUSTOM: "Kustom",
-};
+const scheduleTypeConfigs: {
+  key: "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM";
+  label: string;
+  description: string;
+}[] = [
+  {
+    key: "DAILY",
+    label: "Jadwal Harian",
+    description: "Dilaksanakan pada hari-hari tertentu setiap minggu",
+  },
+  {
+    key: "WEEKLY",
+    label: "Jadwal Mingguan",
+    description: "Berulang dengan pola mingguan",
+  },
+  {
+    key: "MONTHLY",
+    label: "Jadwal Bulanan",
+    description: "Dilakukan pada tanggal tertentu setiap bulan",
+  },
+  {
+    key: "CUSTOM",
+    label: "Jadwal Kustom",
+    description: "Mengikuti tanggal khusus yang sudah ditentukan",
+  },
+];
 
 export default function DivisionDetailPage() {
   const params = useParams();
@@ -42,6 +62,16 @@ export default function DivisionDetailPage() {
       users: division.users.length,
       programs: division.programs.length,
     };
+  }, [division]);
+
+  const programGroups = useMemo(() => {
+    if (!division) return [];
+    return scheduleTypeConfigs
+      .map((config) => ({
+        ...config,
+        programs: division.programs.filter((program) => program.scheduleType === config.key),
+      }))
+      .filter((group) => group.programs.length > 0);
   }, [division]);
 
   if (!divisionId) {
@@ -142,56 +172,62 @@ export default function DivisionDetailPage() {
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle>Program Kerja</CardTitle>
-              <CardDescription>Daftar program yang dikelola Divisi {division.name}</CardDescription>
+              <CardDescription>Kelompok program divisi berdasarkan tipe jadwal</CardDescription>
             </div>
             <Badge variant="secondary">{counts.programs} program</Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {division.programs.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center">
               <ClipboardList className="mb-3 h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Belum ada program untuk divisi ini.</p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {division.programs.map((program) => (
-                <Card key={program.id} className="border shadow-sm">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <CardTitle className="text-base">{program.name}</CardTitle>
-                        {program.description && (
-                          <CardDescription className="mt-1 line-clamp-2">
-                            {program.description}
-                          </CardDescription>
-                        )}
-                      </div>
-                      <Badge variant={program.isActive ? "default" : "secondary"}>
-                        {program.isActive ? "Aktif" : "Nonaktif"}
-                      </Badge>
+            programGroups.map((group) => (
+              <div key={group.key} className="space-y-3">
+                <div>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">{group.label}</h3>
+                      <p className="text-sm text-muted-foreground">{group.description}</p>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Badge variant="outline" className="capitalize">
-                        {scheduleTypeLabels[program.scheduleType] ?? program.scheduleType}
-                      </Badge>
-                      {program.scheduleTime && (
-                        <span className="flex items-center gap-1">
+                    <Badge variant="outline">{group.programs.length} program</Badge>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {group.programs.map((program) => (
+                    <Card key={program.id} className="border shadow-sm">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <CardTitle className="text-base leading-tight">{program.name}</CardTitle>
+                            {program.description && (
+                              <CardDescription className="line-clamp-2 text-sm">
+                                {program.description}
+                              </CardDescription>
+                            )}
+                          </div>
+                          <Badge variant={program.isActive ? "default" : "secondary"}>
+                            {program.isActive ? "Aktif" : "Nonaktif"}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4" />
-                          {program.scheduleTime}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Camera className="h-4 w-4" />
-                      <span>Minimal {program.minPhotos} foto</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                          <span>{program.scheduleTime || "Tidak dijadwalkan"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Camera className="h-4 w-4" />
+                          <span>Minimal {program.minPhotos} foto</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </CardContent>
       </Card>

@@ -94,30 +94,78 @@ export default function DivisionsPage() {
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Deskripsi</TableHead>
-                  <TableHead className="text-center">Anggota</TableHead>
-                  <TableHead className="text-center">Program</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Deskripsi</TableHead>
+                      <TableHead className="text-center">Anggota</TableHead>
+                      <TableHead className="text-center">Program</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {divisions?.map((division) => (
+                      <TableRow key={division.id}>
+                        <TableCell className="font-medium">{division.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {division.description || "-"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary">{division._count?.users || 0}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline">{division._count?.programs || 0}</Badge>
+                        </TableCell>
+                        <TableCell className="flex justify-end gap-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(division)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(division)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Hapus
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/dashboard/divisions/${division.id}`}>Detail</Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="grid gap-3 md:hidden">
                 {divisions?.map((division) => (
-                  <TableRow key={division.id}>
-                    <TableCell className="font-medium">{division.name}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {division.description || "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">{division._count?.users || 0}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline">{division._count?.programs || 0}</Badge>
-                    </TableCell>
-                    <TableCell className="flex justify-end gap-2">
+                  <div key={division.id} className="rounded-lg border bg-card p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-base font-semibold leading-tight">{division.name}</p>
+                        {division.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {division.description}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2 text-sm">
+                          <Badge variant="secondary">{division._count?.users || 0} anggota</Badge>
+                          <Badge variant="outline">{division._count?.programs || 0} program</Badge>
+                        </div>
+                      </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -138,14 +186,20 @@ export default function DivisionsPage() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <Button asChild variant="outline" size="sm">
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant="outline" className="flex-1">
                         <Link href={`/dashboard/divisions/${division.id}`}>Detail</Link>
                       </Button>
-                    </TableCell>
-                  </TableRow>
+                      <Button size="sm" variant="secondary" onClick={() => handleEdit(division)}>
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

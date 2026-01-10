@@ -57,7 +57,7 @@ export async function PUT(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.errors[0].message },
+        { error: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
@@ -65,14 +65,14 @@ export async function PUT(
     const { password, id: _, ...data } = parsed.data;
 
     // Check email uniqueness
-    if (data.email) {
+    if (data.username) {
       const existing = await prisma.user.findFirst({
-        where: { email: data.email, NOT: { id } },
+        where: { username: data.username, NOT: { id } },
       });
 
       if (existing) {
         return NextResponse.json(
-          { error: "Email sudah digunakan" },
+          { error: "Username sudah digunakan" },
           { status: 400 }
         );
       }

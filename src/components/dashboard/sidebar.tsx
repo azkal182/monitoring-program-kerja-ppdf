@@ -1,6 +1,4 @@
 "use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -13,7 +11,6 @@ import {
   BarChart3,
   LogOut,
   ChevronDown,
-  Menu,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -27,7 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 
 const navigation = [
@@ -80,7 +76,15 @@ function NavItems({ className, onClick }: { className?: string; onClick?: () => 
   );
 }
 
-function UserMenu() {
+interface DashboardUserMenuProps {
+  align?: "start" | "center" | "end";
+  buttonClassName?: string;
+}
+
+export function DashboardUserMenu({
+  align = "end",
+  buttonClassName,
+}: DashboardUserMenuProps) {
   const { data: session } = useSession();
   const user = session?.user;
 
@@ -102,7 +106,10 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start gap-3 px-3">
+        <Button
+          variant="ghost"
+          className={cn("w-full justify-start gap-3 px-3", buttonClassName)}
+        >
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary/10 text-primary">
               {initials}
@@ -115,7 +122,7 @@ function UserMenu() {
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align={align} className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium">{user.name}</p>
@@ -144,14 +151,37 @@ function UserMenu() {
   );
 }
 
-export function DashboardSidebar() {
-  const { data: session } = useSession();
-  const [mobileOpen, setMobileOpen] = useState(false);
+interface DashboardSidebarProps {
+  variant?: "desktop" | "sheet";
+  onNavigate?: () => void;
+}
 
+function SidebarContent({
+  onNavigate,
+  userMenuAlign,
+}: {
+  onNavigate?: () => void;
+  userMenuAlign?: "start" | "center" | "end";
+}) {
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="hidden w-64 flex-col border-r bg-card md:flex">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <NavItems onClick={onNavigate} />
+      </div>
+      <div className="border-t bg-card/80 p-4 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+        <DashboardUserMenu align={userMenuAlign} />
+      </div>
+    </>
+  );
+}
+
+export function DashboardSidebar({
+  variant = "desktop",
+  onNavigate,
+}: DashboardSidebarProps) {
+  if (variant === "sheet") {
+    return (
+      <div className="flex h-full flex-col bg-card">
         <div className="flex h-16 items-center border-b px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -160,48 +190,22 @@ export function DashboardSidebar() {
             <span className="font-semibold">Monitoring</span>
           </Link>
         </div>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-          <NavItems />
-        </div>
-        <div className="border-t p-4">
-          <UserMenu />
-        </div>
-      </aside>
+        <SidebarContent onNavigate={onNavigate} userMenuAlign="start" />
+      </div>
+    );
+  }
 
-      {/* Mobile Header */}
-      <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-card px-4 md:hidden">
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
-            <div className="flex h-16 items-center border-b px-4">
-              <Link href="/dashboard" className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <ClipboardList className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <span className="font-semibold">Monitoring</span>
-              </Link>
-            </div>
-            <div className="flex flex-1 flex-col gap-4 p-4">
-              <NavItems onClick={() => setMobileOpen(false)} />
-            </div>
-            <div className="border-t p-4">
-              <UserMenu />
-            </div>
-          </SheetContent>
-        </Sheet>
+  return (
+    <aside className="hidden h-screen w-64 flex-col border-r bg-card shadow-sm md:sticky md:top-0 md:flex">
+      <div className="flex h-16 items-center border-b px-4">
         <Link href="/dashboard" className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <ClipboardList className="h-4 w-4 text-primary-foreground" />
+          </div>
           <span className="font-semibold">Monitoring</span>
         </Link>
-        <div className="ml-auto">
-          {session?.user && (
-            <Badge variant="outline">{session.user.divisionName || session.user.role}</Badge>
-          )}
-        </div>
-      </header>
-    </>
+      </div>
+      <SidebarContent onNavigate={onNavigate} userMenuAlign="end" />
+    </aside>
   );
 }

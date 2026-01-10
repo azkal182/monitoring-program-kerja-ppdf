@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         ...(userId && { userId }),
       },
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, username: true } },
         schedule: {
           include: {
             program: { include: { division: true } },
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.errors[0].message },
+        { error: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
