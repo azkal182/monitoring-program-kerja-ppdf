@@ -52,19 +52,21 @@ model Division {
 }
 
 model Program {
-  id            String             @id @default(cuid())
-  name          String
-  description   String?
-  scheduleType  ScheduleType
-  scheduleDays  Int[]              // 0=Sunday, 1=Monday, etc.
-  scheduleTime  String?            // Format: "HH:mm"
-  minPhotos     Int                @default(1)
-  isActive      Boolean            @default(true)
-  divisionId    String
-  division      Division           @relation(fields: [divisionId], references: [id], onDelete: Cascade)
-  schedules     ScheduleInstance[]
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id                String             @id @default(cuid())
+  name              String
+  description       String?
+  scheduleType      ScheduleType
+  scheduleDays      Int[]              // 0=Sunday, 1=Monday, etc. (for DAILY/WEEKLY)
+  scheduleMonthDays Int[]              // 1-31 (for MONTHLY - which day of month)
+  customDates       DateTime[]         // Specific dates (for CUSTOM)
+  scheduleTime      String?            // Format: "HH:mm"
+  minPhotos         Int                @default(1)
+  isActive          Boolean            @default(true)
+  divisionId        String
+  division          Division           @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  schedules         ScheduleInstance[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model ScheduleInstance {

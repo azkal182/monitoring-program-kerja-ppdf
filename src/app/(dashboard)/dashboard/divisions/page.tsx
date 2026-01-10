@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Plus, MoreHorizontal, Pencil, Trash2, Building2 } from "lucide-react";
 import { toast } from "sonner";
@@ -116,7 +117,7 @@ export default function DivisionsPage() {
                     <TableCell className="text-center">
                       <Badge variant="outline">{division._count?.programs || 0}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="flex justify-end gap-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -137,6 +138,9 @@ export default function DivisionsPage() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/dashboard/divisions/${division.id}`}>Detail</Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

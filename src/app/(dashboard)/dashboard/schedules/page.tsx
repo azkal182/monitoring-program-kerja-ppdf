@@ -1,5 +1,4 @@
-import prisma from "@/lib/prisma";
-import { formatDate, getDayName } from "@/lib/utils";
+import { formatDate, getJakartaDayName } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -9,29 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, CheckCircle, AlertCircle, XCircle } from "lucide-react";
-
-async function getTodaySchedules() {
-  const today = new Date();
-  const dateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-  return prisma.scheduleInstance.findMany({
-    where: { date: dateOnly },
-    include: {
-      program: {
-        include: { division: true },
-      },
-      sessions: {
-        include: {
-          user: { select: { name: true } },
-        },
-      },
-    },
-    orderBy: [
-      { program: { division: { name: "asc" } } },
-      { program: { scheduleTime: "asc" } },
-    ],
-  });
-}
+import { getTodaySchedules } from "@/lib/schedule-generator";
 
 export default async function SchedulesPage() {
   const schedules = await getTodaySchedules();
@@ -61,7 +38,7 @@ export default async function SchedulesPage() {
         <div>
           <h1 className="text-3xl font-bold">Jadwal Hari Ini</h1>
           <p className="text-muted-foreground">
-            {formatDate(new Date())} ({getDayName(new Date().getDay())})
+            {formatDate(new Date())} ({getJakartaDayName(new Date())})
           </p>
         </div>
       </div>

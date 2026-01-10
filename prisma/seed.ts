@@ -218,6 +218,45 @@ async function main() {
         divisionId: kesehatan.id,
       },
     }),
+    // MONTHLY examples
+    prisma.program.create({
+      data: {
+        name: "Rapat Bulanan Keamanan",
+        description: "Rapat evaluasi bulanan tim keamanan di tanggal 1",
+        scheduleType: "MONTHLY",
+        scheduleMonthDays: [1],
+        scheduleTime: "10:00",
+        minPhotos: 2,
+        divisionId: keamanan.id,
+      },
+    }),
+    prisma.program.create({
+      data: {
+        name: "Inventaris Bulanan",
+        description: "Pengecekan inventaris di tanggal 15 setiap bulan",
+        scheduleType: "MONTHLY",
+        scheduleMonthDays: [15],
+        scheduleTime: "09:00",
+        minPhotos: 5,
+        divisionId: kebersihan.id,
+      },
+    }),
+    // CUSTOM example - for special dates
+    prisma.program.create({
+      data: {
+        name: "Cek Kesiapan Acara Akhir Tahun",
+        description: "Persiapan acara akhir tahun ajaran",
+        scheduleType: "CUSTOM",
+        customDates: [
+          new Date("2026-01-05"),
+          new Date("2026-01-10"),
+          new Date("2026-01-15"),
+        ],
+        scheduleTime: "08:00",
+        minPhotos: 3,
+        divisionId: pendidikan.id,
+      },
+    }),
   ]);
 
   console.log(`✅ Created ${programs.length} programs`);

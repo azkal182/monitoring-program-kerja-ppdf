@@ -9,6 +9,8 @@ export interface Program {
   description: string | null;
   scheduleType: ScheduleType;
   scheduleDays: number[];
+  scheduleMonthDays: number[];
+  customDates: string[];
   scheduleTime: string | null;
   minPhotos: number;
   isActive: boolean;
@@ -24,6 +26,8 @@ export interface ProgramInput {
   description?: string;
   scheduleType: ScheduleType;
   scheduleDays: number[];
+  scheduleMonthDays: number[];
+  customDates: string[];
   scheduleTime: string;
   minPhotos: number;
   isActive: boolean;

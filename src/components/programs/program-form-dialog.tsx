@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X, CalendarIcon } from "lucide-react";
 import { ScheduleType } from "@prisma/client";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
 import { programSchema, type ProgramInput } from "@/lib/validations/program";
 import { useCreateProgram, useUpdateProgram, type Program } from "@/hooks/use-programs";
 import { useDivisions } from "@/hooks/use-divisions";
-import { getDayName } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +40,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface ProgramFormDialogProps {
   open: boolean;
@@ -47,10 +55,10 @@ interface ProgramFormDialogProps {
 }
 
 const scheduleTypeOptions = [
-  { value: ScheduleType.DAILY, label: "Harian" },
-  { value: ScheduleType.WEEKLY, label: "Mingguan" },
-  { value: ScheduleType.MONTHLY, label: "Bulanan" },
-  { value: ScheduleType.CUSTOM, label: "Kustom" },
+  { value: ScheduleType.DAILY, label: "Harian", description: "Jalankan setiap hari yang dipilih" },
+  { value: ScheduleType.WEEKLY, label: "Mingguan", description: "Jalankan pada hari tertentu dalam minggu" },
+  { value: ScheduleType.MONTHLY, label: "Bulanan", description: "Jalankan pada tanggal tertentu setiap bulan" },
+  { value: ScheduleType.CUSTOM, label: "Kustom", description: "Pilih tanggal-tanggal spesifik" },
 ];
 
 const days = [
@@ -62,6 +70,8 @@ const days = [
   { value: 5, label: "Jumat" },
   { value: 6, label: "Sabtu" },
 ];
+
+const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export function ProgramFormDialog({
   open,
@@ -81,6 +91,8 @@ export function ProgramFormDialog({
       description: "",
       scheduleType: ScheduleType.DAILY,
       scheduleDays: [1, 2, 3, 4, 5, 6, 0],
+      scheduleMonthDays: [],
+      customDates: [],
       scheduleTime: "07:00",
       minPhotos: 1,
       isActive: true,
@@ -88,13 +100,20 @@ export function ProgramFormDialog({
     },
   });
 
+  const scheduleType = form.watch("scheduleType");
+  const selectedDays = form.watch("scheduleDays");
+  const selectedMonthDays = form.watch("scheduleMonthDays");
+  const customDates = form.watch("customDates");
+
   useEffect(() => {
     if (program) {
       form.reset({
         name: program.name,
         description: program.description || "",
         scheduleType: program.scheduleType,
-        scheduleDays: program.scheduleDays,
+        scheduleDays: program.scheduleDays || [],
+        scheduleMonthDays: program.scheduleMonthDays || [],
+        customDates: program.customDates?.map(d => d.toString().split("T")[0]) || [],
         scheduleTime: program.scheduleTime || "07:00",
         minPhotos: program.minPhotos,
         isActive: program.isActive,
@@ -106,6 +125,8 @@ export function ProgramFormDialog({
         description: "",
         scheduleType: ScheduleType.DAILY,
         scheduleDays: [1, 2, 3, 4, 5, 6, 0],
+        scheduleMonthDays: [],
+        customDates: [],
         scheduleTime: "07:00",
         minPhotos: 1,
         isActive: true,
@@ -132,8 +153,6 @@ export function ProgramFormDialog({
     }
   }
 
-  const selectedDays = form.watch("scheduleDays");
-
   function toggleDay(dayValue: number) {
     const current = form.getValues("scheduleDays");
     if (current.includes(dayValue)) {
@@ -147,6 +166,41 @@ export function ProgramFormDialog({
         shouldValidate: true,
       });
     }
+  }
+
+  function toggleMonthDay(day: number) {
+    const current = form.getValues("scheduleMonthDays");
+    if (current.includes(day)) {
+      form.setValue(
+        "scheduleMonthDays",
+        current.filter((d) => d !== day),
+        { shouldValidate: true }
+      );
+    } else {
+      form.setValue("scheduleMonthDays", [...current, day].sort((a, b) => a - b), {
+        shouldValidate: true,
+      });
+    }
+  }
+
+  function addCustomDate(date: Date | undefined) {
+    if (!date) return;
+    const dateStr = format(date, "yyyy-MM-dd");
+    const current = form.getValues("customDates");
+    if (!current.includes(dateStr)) {
+      form.setValue("customDates", [...current, dateStr].sort(), {
+        shouldValidate: true,
+      });
+    }
+  }
+
+  function removeCustomDate(dateStr: string) {
+    const current = form.getValues("customDates");
+    form.setValue(
+      "customDates",
+      current.filter((d) => d !== dateStr),
+      { shouldValidate: true }
+    );
   }
 
   return (
@@ -238,6 +292,9 @@ export function ProgramFormDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormDescription className="text-xs">
+                      {scheduleTypeOptions.find(o => o.value === field.value)?.description}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -258,35 +315,127 @@ export function ProgramFormDialog({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="scheduleDays"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Hari Terjadwal</FormLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {days.map((day) => (
-                      <Badge
-                        key={day.value}
-                        variant={
-                          selectedDays.includes(day.value)
-                            ? "default"
-                            : "outline"
-                        }
-                        className="cursor-pointer"
-                        onClick={() => toggleDay(day.value)}
-                      >
-                        {day.label.slice(0, 3)}
-                      </Badge>
-                    ))}
-                  </div>
-                  <FormDescription>
-                    Klik untuk memilih/batal hari
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* DAILY / WEEKLY: Show day picker */}
+            {(scheduleType === ScheduleType.DAILY || scheduleType === ScheduleType.WEEKLY) && (
+              <FormField
+                control={form.control}
+                name="scheduleDays"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Hari Terjadwal</FormLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {days.map((day) => (
+                        <Badge
+                          key={day.value}
+                          variant={
+                            selectedDays.includes(day.value)
+                              ? "default"
+                              : "outline"
+                          }
+                          className="cursor-pointer"
+                          onClick={() => toggleDay(day.value)}
+                        >
+                          {day.label.slice(0, 3)}
+                        </Badge>
+                      ))}
+                    </div>
+                    <FormDescription>
+                      Klik untuk memilih/batal hari
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* MONTHLY: Show month day picker */}
+            {scheduleType === ScheduleType.MONTHLY && (
+              <FormField
+                control={form.control}
+                name="scheduleMonthDays"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Tanggal Dalam Bulan</FormLabel>
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 border rounded-md">
+                      {monthDays.map((day) => (
+                        <Badge
+                          key={day}
+                          variant={
+                            selectedMonthDays.includes(day)
+                              ? "default"
+                              : "outline"
+                          }
+                          className="cursor-pointer w-8 justify-center"
+                          onClick={() => toggleMonthDay(day)}
+                        >
+                          {day}
+                        </Badge>
+                      ))}
+                    </div>
+                    <FormDescription>
+                      Pilih tanggal 1-31 untuk jadwal bulanan
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* CUSTOM: Show date picker */}
+            {scheduleType === ScheduleType.CUSTOM && (
+              <FormField
+                control={form.control}
+                name="customDates"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Tanggal Kustom</FormLabel>
+                    <div className="space-y-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            <Plus className="mr-2 h-4 w-4" />
+                            Tambah Tanggal
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            onSelect={addCustomDate}
+                            locale={id}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {customDates.length > 0 && (
+                        <div className="flex flex-wrap gap-2 p-2 border rounded-md max-h-32 overflow-y-auto">
+                          {customDates.map((dateStr) => (
+                            <Badge
+                              key={dateStr}
+                              variant="secondary"
+                              className="cursor-pointer"
+                              onClick={() => removeCustomDate(dateStr)}
+                            >
+                              {format(new Date(dateStr), "dd MMM yyyy", { locale: id })}
+                              <X className="ml-1 h-3 w-3" />
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <FormDescription>
+                      Klik tanggal untuk menghapus
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

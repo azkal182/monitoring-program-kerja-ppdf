@@ -19,10 +19,19 @@ export async function GET(
       where: { id },
       include: {
         users: {
-          select: { id: true, name: true, email: true, role: true },
+          select: { id: true, name: true, username: true, role: true },
         },
         programs: {
-          select: { id: true, name: true, isActive: true },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            scheduleType: true,
+            scheduleTime: true,
+            minPhotos: true,
+            isActive: true,
+          },
+          orderBy: { name: "asc" },
         },
       },
     });
@@ -60,7 +69,7 @@ export async function PUT(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.errors[0].message },
+        { error: parsed.error.issues[0]?.message ?? "Data tidak valid" },
         { status: 400 }
       );
     }

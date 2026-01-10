@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -48,19 +49,28 @@ function NavItems({ className, onClick }: { className?: string; onClick?: () => 
       {navigation
         .filter((item) => !item.adminOnly || isAdmin)
         .map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")) ||
+            (item.href === "/dashboard" && (pathname === "/dashboard" || pathname === "/dashboard/"));
           return (
             <Link
               key={item.name}
               href={item.href}
               onClick={onClick}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/40"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
+              <span
+                className={cn(
+                  "absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full transition-all",
+                  isActive ? "bg-primary opacity-100" : "bg-transparent opacity-0 group-hover:opacity-40 group-hover:bg-muted-foreground"
+                )}
+              />
               <item.icon className="h-5 w-5" />
               {item.name}
             </Link>
@@ -136,11 +146,12 @@ function UserMenu() {
 
 export function DashboardSidebar() {
   const { data: session } = useSession();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden w-64 flex-col border-r bg-card lg:flex">
+      <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-16 items-center border-b px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -158,8 +169,8 @@ export function DashboardSidebar() {
       </aside>
 
       {/* Mobile Header */}
-      <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-card px-4 lg:hidden">
-        <Sheet>
+      <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-card px-4 md:hidden">
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon">
               <Menu className="h-5 w-5" />
@@ -175,7 +186,7 @@ export function DashboardSidebar() {
               </Link>
             </div>
             <div className="flex flex-1 flex-col gap-4 p-4">
-              <NavItems />
+              <NavItems onClick={() => setMobileOpen(false)} />
             </div>
             <div className="border-t p-4">
               <UserMenu />

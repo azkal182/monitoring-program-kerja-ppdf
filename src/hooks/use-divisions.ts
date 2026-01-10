@@ -14,6 +14,28 @@ export interface Division {
   };
 }
 
+export interface DivisionMember {
+  id: string;
+  name: string;
+  username: string;
+  role: "ADMIN" | "KOORDINATOR" | "ANGGOTA";
+}
+
+export interface DivisionProgram {
+  id: string;
+  name: string;
+  description: string | null;
+  scheduleType: "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM";
+  scheduleTime: string | null;
+  minPhotos: number;
+  isActive: boolean;
+}
+
+export interface DivisionDetail extends Division {
+  users: DivisionMember[];
+  programs: DivisionProgram[];
+}
+
 export interface DivisionInput {
   name: string;
   description?: string;
@@ -25,7 +47,7 @@ async function fetchDivisions(): Promise<Division[]> {
   return res.json();
 }
 
-async function fetchDivision(id: string): Promise<Division> {
+async function fetchDivision(id: string): Promise<DivisionDetail> {
   const res = await fetch(`/api/divisions/${id}`);
   if (!res.ok) throw new Error("Failed to fetch division");
   return res.json();

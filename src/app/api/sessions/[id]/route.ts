@@ -18,7 +18,7 @@ export async function GET(
     const session = await prisma.session.findUnique({
       where: { id },
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, username: true } },
         schedule: {
           include: {
             program: { include: { division: true } },

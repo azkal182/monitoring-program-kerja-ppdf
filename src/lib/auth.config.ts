@@ -10,6 +10,7 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const pathname = nextUrl.pathname;
+      const userRole = auth?.user?.role;
 
       // Public routes
       const publicRoutes = ["/login"];
@@ -19,6 +20,10 @@ export const authConfig = {
 
       if (isPublicRoute) {
         if (isLoggedIn && pathname === "/login") {
+          // Redirect based on role after login
+          if (userRole === "ANGGOTA") {
+            return Response.redirect(new URL("/field/today", nextUrl));
+          }
           return Response.redirect(new URL("/dashboard", nextUrl));
         }
         return true;
@@ -32,6 +37,50 @@ export const authConfig = {
       // All other routes require authentication
       if (!isLoggedIn) {
         return false; // Redirect to login
+      }
+
+      // Role-based access control
+      const isFieldRoute = pathname.startsWith("/field");
+      const isDashboardRoute = pathname.startsWith("/dashboard");
+      const isApiRoute = pathname.startsWith("/api");
+      const isRootRoute = pathname === "/";
+
+      // ANGGOTA can only access /field routes and related APIs
+      if (userRole === "ANGGOTA") {
+        if (isDashboardRoute) {
+          return Response.redirect(new URL("/field/today", nextUrl));
+        }
+        // Allow API routes for field app functionality
+        if (isApiRoute) {
+          // Restrict admin-only APIs
+          const adminOnlyApis = [
+            "/api/divisions",
+            "/api/users",
+            "/api/programs",
+          ];
+          const isAdminApi = adminOnlyApis.some(
+            (api) => pathname.startsWith(api) && !pathname.includes("/field")
+          );
+          if (isAdminApi && !pathname.includes("sessions")) {
+            return Response.redirect(new URL("/field/today", nextUrl));
+          }
+        }
+        if (isRootRoute) {
+          return Response.redirect(new URL("/field/today", nextUrl));
+        }
+      }
+
+      // ADMIN cannot access field routes (optional - remove if admin should access field)
+      if (userRole === "ADMIN" && isFieldRoute) {
+        return Response.redirect(new URL("/dashboard", nextUrl));
+      }
+
+      // Root redirect based on role
+      if (isRootRoute) {
+        if (userRole === "ANGGOTA") {
+          return Response.redirect(new URL("/field/today", nextUrl));
+        }
+        return Response.redirect(new URL("/dashboard", nextUrl));
       }
 
       return true;
