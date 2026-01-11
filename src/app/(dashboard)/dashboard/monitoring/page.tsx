@@ -109,28 +109,38 @@ export default function MonitoringPage() {
   return (
     <div className="space-y-6">
       {/* Header with Month Navigation */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold">Monitoring Program Kerja</h1>
           <p className="text-muted-foreground">
             {isAdmin ? "Semua Divisi" : `Divisi ${session?.user?.divisionName || ""}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+        <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handlePrevMonth}
+            className="h-9 w-9 shrink-0"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="min-w-[140px] text-center font-medium">
+          <span className="flex-1 min-w-[140px] text-center font-medium sm:flex-none">
             {format(currentMonth, "MMMM yyyy", { locale: id })}
           </span>
-          <Button variant="outline" size="icon" onClick={handleNextMonth}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleNextMonth}
+            className="h-9 w-9 shrink-0"
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Overview Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Jadwal</CardTitle>
@@ -190,31 +200,33 @@ export default function MonitoringPage() {
             </CardTitle>
             <CardDescription>Persentase status pelaksanaan</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[320px]">
             {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent = 0 }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="w-full overflow-x-auto">
+                <div className="min-w-[320px] h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-full flex items-center justify-center text-muted-foreground">
                 Tidak ada data
               </div>
             )}
@@ -230,15 +242,15 @@ export default function MonitoringPage() {
             </CardTitle>
             <CardDescription>Jumlah program per hari</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[320px]">
             {lineData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={lineData}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={lineData} margin={{ left: -10, right: 10, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 11 }} width={32} />
                   <Tooltip />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Line
                     type="monotone"
                     dataKey="total"
@@ -256,7 +268,7 @@ export default function MonitoringPage() {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-full flex items-center justify-center text-muted-foreground">
                 Tidak ada data
               </div>
             )}
@@ -274,14 +286,14 @@ export default function MonitoringPage() {
             </CardTitle>
             <CardDescription>Perbandingan pelaksanaan antar divisi</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={barData} layout="vertical">
+          <CardContent className="h-[360px] md:h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData} layout="vertical" margin={{ left: -20, right: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="Selesai" stackId="a" fill={COLORS.completed} />
                 <Bar dataKey="Kendala" stackId="a" fill={COLORS.completedWithIssue} />
                 <Bar dataKey="Gagal" stackId="a" fill={COLORS.notExecuted} />
@@ -303,61 +315,116 @@ export default function MonitoringPage() {
         </CardHeader>
         <CardContent>
           {stats.byProgram.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Program</TableHead>
-                  {isAdmin && <TableHead>Divisi</TableHead>}
-                  <TableHead className="text-center">Total</TableHead>
-                  <TableHead className="text-center">Selesai</TableHead>
-                  <TableHead className="text-center">Kendala</TableHead>
-                  <TableHead className="text-center">Gagal</TableHead>
-                  <TableHead className="text-center">Pending</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="hidden md:block">
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[700px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Program</TableHead>
+                        {isAdmin && <TableHead>Divisi</TableHead>}
+                        <TableHead className="text-center">Total</TableHead>
+                        <TableHead className="text-center">Selesai</TableHead>
+                        <TableHead className="text-center">Kendala</TableHead>
+                        <TableHead className="text-center">Gagal</TableHead>
+                        <TableHead className="text-center">Pending</TableHead>
+                        <TableHead className="text-right">Rate</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {stats.byProgram.map((program) => (
+                        <TableRow key={program.programId}>
+                          <TableCell className="font-medium">{program.programName}</TableCell>
+                          {isAdmin && (
+                            <TableCell className="text-muted-foreground">
+                              {program.divisionName}
+                            </TableCell>
+                          )}
+                          <TableCell className="text-center">{program.total}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="default" className="bg-green-500">
+                              {program.completed}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="secondary" className="bg-amber-500 text-white">
+                              {program.completedWithIssue}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="destructive">
+                              {program.notExecuted}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline">
+                              {program.pending}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Progress value={program.completionRate} className="w-16 h-2" />
+                              <span className="text-sm font-medium w-10">
+                                {program.completionRate}%
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <div className="space-y-3 md:hidden">
                 {stats.byProgram.map((program) => (
-                  <TableRow key={program.programId}>
-                    <TableCell className="font-medium">{program.programName}</TableCell>
-                    {isAdmin && (
-                      <TableCell className="text-muted-foreground">
-                        {program.divisionName}
-                      </TableCell>
-                    )}
-                    <TableCell className="text-center">{program.total}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="default" className="bg-green-500">
-                        {program.completed}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary" className="bg-amber-500 text-white">
-                        {program.completedWithIssue}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="destructive">
-                        {program.notExecuted}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline">
-                        {program.pending}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Progress value={program.completionRate} className="w-16 h-2" />
-                        <span className="text-sm font-medium w-10">
-                          {program.completionRate}%
-                        </span>
+                  <div
+                    key={program.programId}
+                    className="rounded-lg border bg-card p-4 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-semibold">{program.programName}</p>
+                      {isAdmin && (
+                        <p className="text-xs text-muted-foreground">
+                          {program.divisionName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Total</p>
+                        <p className="text-base font-semibold">{program.total}</p>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                      <div>
+                        <p className="text-muted-foreground">Rate</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Progress value={program.completionRate} className="h-2 flex-1" />
+                          <span className="text-sm font-medium">
+                            {program.completionRate}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="default" className="w-fit bg-green-500">
+                          Selesai: {program.completed}
+                        </Badge>
+                        <Badge variant="secondary" className="w-fit bg-amber-500 text-white">
+                          Kendala: {program.completedWithIssue}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="destructive" className="w-fit">
+                          Gagal: {program.notExecuted}
+                        </Badge>
+                        <Badge variant="outline" className="w-fit">
+                          Pending: {program.pending}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           ) : (
             <div className="py-8 text-center text-muted-foreground">
               Tidak ada program yang terjadwal bulan ini
