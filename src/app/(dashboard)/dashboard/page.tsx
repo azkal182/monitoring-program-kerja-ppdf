@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, ClipboardList, CheckCircle, CalendarDays } from "lucide-react";
+import { Building2, Users, ClipboardList, CheckCircle, CalendarDays, Bell } from "lucide-react";
 import prisma from "@/lib/prisma";
 
 async function getStats() {
@@ -44,22 +44,41 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <Card className="shadow-sm">
-        <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <CalendarDays className="h-5 w-5" />
-              Kalender Program Kerja
-            </CardTitle>
-            <CardDescription>
-              Lihat jadwal program dalam tampilan kalender bulanan dan kelola program non-harian dengan mudah.
-            </CardDescription>
-          </div>
-          <Button asChild size="sm" className="mt-2 w-full sm:mt-0 sm:w-auto">
-            <Link href="/dashboard/calendar">Buka Kalender</Link>
-          </Button>
-        </CardHeader>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CalendarDays className="h-5 w-5" />
+                Kalender Program Kerja
+              </CardTitle>
+              <CardDescription>
+                Lihat jadwal program dalam tampilan kalender bulanan dan kelola program non-harian dengan mudah.
+              </CardDescription>
+            </div>
+            <Button asChild size="sm" className="mt-2 w-full sm:mt-0 sm:w-auto">
+              <Link href="/dashboard/calendar">Buka Kalender</Link>
+            </Button>
+          </CardHeader>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Bell className="h-5 w-5" />
+                Notifikasi Push
+              </CardTitle>
+              <CardDescription>
+                Kirim pemberitahuan ke seluruh pengguna atau pengguna tertentu untuk update program kerja.
+              </CardDescription>
+            </div>
+            <Button asChild size="sm" className="mt-2 w-full sm:mt-0 sm:w-auto">
+              <Link href="/dashboard/push-notifications">Kelola Notifikasi</Link>
+            </Button>
+          </CardHeader>
+        </Card>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

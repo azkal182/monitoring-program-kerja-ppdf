@@ -11,6 +11,7 @@ import {
   BarChart3,
   LogOut,
   ChevronDown,
+  Bell,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const navigation = [
   { name: "Program Kerja", href: "/dashboard/programs", icon: ClipboardList },
   { name: "Jadwal", href: "/dashboard/schedules", icon: Calendar },
   { name: "Kalender", href: "/dashboard/calendar", icon: Calendar },
+  { name: "Notifikasi", href: "/dashboard/push-notifications", icon: Bell, adminOnly: true },
   { name: "Monitoring", href: "/dashboard/monitoring", icon: BarChart3 },
 ];
 

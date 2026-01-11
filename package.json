@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "proxy": "local-ssl-proxy --source 443 --target 3000 --cert monitoring.local.pem --key monitoring.local-key.pem",
+    "dev:ssl": "concurrently \"npm run dev\" \"npm run proxy\"",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-progress": "^1.1.8",
+    "@radix-ui/react-radio-group": "^1.3.8",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
@@ -43,6 +46,7 @@
     "recharts": "^3.6.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
+    "web-push": "^3.6.0",
     "zod": "^4.3.4"
   },
   "devDependencies": {
@@ -51,8 +55,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "local-ssl-proxy": "^2.0.5",
     "prisma": "^7.2.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.4.0",
