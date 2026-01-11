@@ -63,16 +63,23 @@ export function usePushNotifications(): UsePushNotificationsResult {
   const [isSupported, setIsSupported] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
-  const [permission, setPermission] = useState<NotificationPermission>(
-    typeof window !== "undefined" ? Notification.permission : "default"
-  );
+  const initialPermission: NotificationPermission =
+    typeof window !== "undefined" && "Notification" in window
+      ? Notification.permission
+      : "default";
+
+  const [permission, setPermission] = useState<NotificationPermission>(initialPermission);
   const [error, setError] = useState<string | null>(null);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const supported = "serviceWorker" in navigator && "PushManager" in window;
-    setIsSupported(supported && Boolean(VAPID_PUBLIC_KEY));
+    const supported =
+      "serviceWorker" in navigator &&
+      "PushManager" in window &&
+      typeof Notification !== "undefined" &&
+      Boolean(VAPID_PUBLIC_KEY);
+    setIsSupported(supported);
   }, []);
 
   const ensureRegistration = useCallback(async () => {
@@ -103,7 +110,9 @@ export function usePushNotifications(): UsePushNotificationsResult {
       if (!registration) return;
       const existing = await registration.pushManager.getSubscription();
       setSubscription(existing);
-      setPermission(Notification.permission);
+      if (typeof Notification !== "undefined") {
+        setPermission(Notification.permission);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memeriksa langganan notifikasi");
     } finally {
@@ -125,6 +134,10 @@ export function usePushNotifications(): UsePushNotificationsResult {
     setError(null);
 
     try {
+      if (typeof Notification === "undefined") {
+        throw new Error("Browser tidak mendukung API Notification.");
+      }
+
       let currentPermission = Notification.permission;
       if (currentPermission === "default") {
         currentPermission = await Notification.requestPermission();
