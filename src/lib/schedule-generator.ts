@@ -92,6 +92,7 @@ export async function getTodaySchedules(divisionId?: string) {
         include: {
           user: { select: { id: true, name: true } },
           photos: true,
+          documents: true,
         },
       },
     },

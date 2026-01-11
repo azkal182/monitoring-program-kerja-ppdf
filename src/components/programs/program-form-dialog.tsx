@@ -6,11 +6,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2, Plus, X, CalendarIcon } from "lucide-react";
 import { ScheduleType } from "@prisma/client";
+
+import { z } from "zod";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-
-import { programSchema, type ProgramInput } from "@/lib/validations/program";
-import { useCreateProgram, useUpdateProgram, type Program } from "@/hooks/use-programs";
+import { programSchema } from "@/lib/validations/program";
+import {
+  useCreateProgram,
+  useUpdateProgram,
+  type Program,
+  type RequirementType,
+} from "@/hooks/use-programs";
 import { useDivisions } from "@/hooks/use-divisions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +60,8 @@ interface ProgramFormDialogProps {
   program?: Program | null;
 }
 
+type ProgramFormValues = z.input<typeof programSchema>;
+
 const scheduleTypeOptions = [
   { value: ScheduleType.DAILY, label: "Harian", description: "Jalankan setiap hari yang dipilih" },
   { value: ScheduleType.WEEKLY, label: "Mingguan", description: "Jalankan pada hari tertentu dalam minggu" },
@@ -73,37 +81,41 @@ const days = [
 
 const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
 
-export function ProgramFormDialog({
-  open,
-  onOpenChange,
-  program,
-}: ProgramFormDialogProps) {
+const blankFormValues = (
+  defaultRequirement: RequirementType
+): ProgramFormValues => ({
+  name: "",
+  description: "",
+  scheduleType: ScheduleType.DAILY,
+  scheduleDays: [1, 2, 3, 4, 5, 6, 0],
+  scheduleMonthDays: [],
+  customDates: [],
+  scheduleTime: "07:00",
+  requirementType: defaultRequirement,
+  minUploads: 1,
+  isActive: true,
+  divisionId: "",
+});
+
+export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDialogProps) {
   const isEditing = !!program;
   const createMutation = useCreateProgram();
   const updateMutation = useUpdateProgram();
   const { data: divisions } = useDivisions();
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<ProgramInput>({
+  const defaultRequirement: RequirementType = "PHOTO";
+
+  const form = useForm<ProgramFormValues>({
     resolver: zodResolver(programSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      scheduleType: ScheduleType.DAILY,
-      scheduleDays: [1, 2, 3, 4, 5, 6, 0],
-      scheduleMonthDays: [],
-      customDates: [],
-      scheduleTime: "07:00",
-      minPhotos: 1,
-      isActive: true,
-      divisionId: "",
-    },
+    defaultValues: blankFormValues(defaultRequirement),
   });
 
   const scheduleType = form.watch("scheduleType");
-  const selectedDays = form.watch("scheduleDays");
-  const selectedMonthDays = form.watch("scheduleMonthDays");
-  const customDates = form.watch("customDates");
+  const selectedDays = (form.watch("scheduleDays") ?? []) as number[];
+  const selectedMonthDays = (form.watch("scheduleMonthDays") ?? []) as number[];
+  const customDates = (form.watch("customDates") ?? []) as string[];
+  const requirementType = form.watch("requirementType");
 
   useEffect(() => {
     if (program) {
@@ -111,38 +123,32 @@ export function ProgramFormDialog({
         name: program.name,
         description: program.description || "",
         scheduleType: program.scheduleType,
-        scheduleDays: program.scheduleDays || [],
-        scheduleMonthDays: program.scheduleMonthDays || [],
-        customDates: program.customDates?.map(d => d.toString().split("T")[0]) || [],
+        scheduleDays: program.scheduleDays ?? [],
+        scheduleMonthDays: program.scheduleMonthDays ?? [],
+        customDates: (program.customDates ?? []).map((d) =>
+          typeof d === "string" ? d.split("T")[0] : new Date(d).toISOString().split("T")[0]
+        ),
         scheduleTime: program.scheduleTime || "07:00",
-        minPhotos: program.minPhotos,
+        requirementType: program.requirementType || defaultRequirement,
+        minUploads: program.minUploads ?? 1,
         isActive: program.isActive,
         divisionId: program.divisionId,
       });
     } else {
-      form.reset({
-        name: "",
-        description: "",
-        scheduleType: ScheduleType.DAILY,
-        scheduleDays: [1, 2, 3, 4, 5, 6, 0],
-        scheduleMonthDays: [],
-        customDates: [],
-        scheduleTime: "07:00",
-        minPhotos: 1,
-        isActive: true,
-        divisionId: "",
-      });
+      form.reset(blankFormValues(defaultRequirement));
     }
-  }, [program, form]);
+  }, [program, form, defaultRequirement]);
 
-  async function onSubmit(data: ProgramInput) {
+  async function onSubmit(data: ProgramFormValues) {
     setIsLoading(true);
     try {
+      const payload = programSchema.parse(data);
+
       if (isEditing && program) {
-        await updateMutation.mutateAsync({ ...data, id: program.id });
+        await updateMutation.mutateAsync({ ...payload, id: program.id });
         toast.success("Program berhasil diperbarui");
       } else {
-        await createMutation.mutateAsync(data);
+        await createMutation.mutateAsync(payload);
         toast.success("Program berhasil ditambahkan");
       }
       onOpenChange(false);
@@ -154,7 +160,7 @@ export function ProgramFormDialog({
   }
 
   function toggleDay(dayValue: number) {
-    const current = form.getValues("scheduleDays");
+    const current = (form.getValues("scheduleDays") ?? []) as number[];
     if (current.includes(dayValue)) {
       form.setValue(
         "scheduleDays",
@@ -169,7 +175,7 @@ export function ProgramFormDialog({
   }
 
   function toggleMonthDay(day: number) {
-    const current = form.getValues("scheduleMonthDays");
+    const current = (form.getValues("scheduleMonthDays") ?? []) as number[];
     if (current.includes(day)) {
       form.setValue(
         "scheduleMonthDays",
@@ -186,7 +192,7 @@ export function ProgramFormDialog({
   function addCustomDate(date: Date | undefined) {
     if (!date) return;
     const dateStr = format(date, "yyyy-MM-dd");
-    const current = form.getValues("customDates");
+    const current = (form.getValues("customDates") ?? []) as string[];
     if (!current.includes(dateStr)) {
       form.setValue("customDates", [...current, dateStr].sort(), {
         shouldValidate: true,
@@ -195,7 +201,7 @@ export function ProgramFormDialog({
   }
 
   function removeCustomDate(dateStr: string) {
-    const current = form.getValues("customDates");
+    const current = (form.getValues("customDates") ?? []) as string[];
     form.setValue(
       "customDates",
       current.filter((d) => d !== dateStr),
@@ -440,10 +446,38 @@ export function ProgramFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="minPhotos"
+                name="requirementType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Minimal Foto</FormLabel>
+                    <FormLabel>Jenis Bukti</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="PHOTO">Foto</SelectItem>
+                        <SelectItem value="DOCUMENT">Dokumen</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs">
+                      {field.value === "PHOTO"
+                        ? "Anggota harus mengunggah foto sebagai bukti"
+                        : "Anggota harus mengunggah file dokumen (PDF/Office) sebagai bukti"}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="minUploads"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Minimal {requirementType === "PHOTO" ? "Foto" : "Dokumen"}
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -453,6 +487,9 @@ export function ProgramFormDialog({
                         onChange={(e) => field.onChange(parseInt(e.target.value))}
                       />
                     </FormControl>
+                    <FormDescription className="text-xs">
+                      Tentukan jumlah bukti minimal yang harus diunggah anggota
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

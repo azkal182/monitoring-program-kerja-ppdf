@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardList, Clock, Camera } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardList, Clock, Camera, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 import { usePrograms, useDeleteProgram, type Program } from "@/hooks/use-programs";
@@ -116,7 +116,7 @@ export default function ProgramsPage() {
                       <TableHead>Program</TableHead>
                       <TableHead>Divisi</TableHead>
                       <TableHead>Jadwal</TableHead>
-                      <TableHead className="text-center">Foto</TableHead>
+                      <TableHead className="text-center">Bukti</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
@@ -147,9 +147,15 @@ export default function ProgramsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Camera className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-sm">{program.minPhotos}</span>
+                          <div className="flex items-center justify-center gap-1 text-sm">
+                            {program.requirementType === "PHOTO" ? (
+                              <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                            )}
+                            <span>
+                              {program.minUploads} {program.requirementType === "PHOTO" ? "foto" : "dokumen"}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
@@ -229,8 +235,14 @@ export default function ProgramsPage() {
                         {formatDays(program.scheduleDays)}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Camera className="h-4 w-4" />
-                        <span>Minimal {program.minPhotos} foto</span>
+                        {program.requirementType === "PHOTO" ? (
+                          <Camera className="h-4 w-4" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                        <span>
+                          Minimal {program.minUploads} {program.requirementType === "PHOTO" ? "foto" : "dokumen"}
+                        </span>
                       </div>
                       <Badge variant={program.isActive ? "default" : "secondary"} className="w-fit">
                         {program.isActive ? "Aktif" : "Nonaktif"}

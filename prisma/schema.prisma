@@ -20,6 +20,11 @@ enum ScheduleType {
   CUSTOM
 }
 
+enum ProgramRequirementType {
+  PHOTO
+  DOCUMENT
+}
+
 enum SessionStatus {
   DRAFT
   COMPLETED
@@ -60,7 +65,8 @@ model Program {
   scheduleMonthDays Int[]              // 1-31 (for MONTHLY - which day of month)
   customDates       DateTime[]         // Specific dates (for CUSTOM)
   scheduleTime      String?            // Format: "HH:mm"
-  minPhotos         Int                @default(1)
+  requirementType   ProgramRequirementType @default(PHOTO)
+  minUploads        Int                @default(1)
   isActive          Boolean            @default(true)
   divisionId        String
   division          Division           @relation(fields: [divisionId], references: [id], onDelete: Cascade)
@@ -91,6 +97,7 @@ model Session {
   scheduleId    String
   schedule      ScheduleInstance @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   photos        Photo[]
+  documents     Document[]
   isAutoCreated Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -100,6 +107,17 @@ model Photo {
   id        String   @id @default(cuid())
   url       String
   caption   String?
+  storagePath String
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  url       String
+  filename  String
+  storagePath String
   sessionId String
   session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())

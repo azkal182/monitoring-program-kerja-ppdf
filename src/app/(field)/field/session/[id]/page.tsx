@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, FormEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,9 +15,12 @@ import {
   Loader2,
   Image as ImageIcon,
   X,
+  FileText,
+  Download,
 } from "lucide-react";
 
 import { useSession, useSubmitSession } from "@/hooks/use-sessions";
+import { RequirementType } from "@/hooks/use-programs";
 import { formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +49,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PhotoCaptureDialog } from "@/components/field/photo-capture";
+import { Input } from "@/components/ui/input";
+
+function dataUrlToFile(dataUrl: string, filename: string): File {
+  const [header, data] = dataUrl.split(",");
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch?.[1] ?? "image/jpeg";
+  const binary = atob(data);
+  const len = binary.length;
+  const array = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    array[i] = binary.charCodeAt(i);
+  }
+  return new File([array], filename, { type: mime });
+}
 
 const submitSchema = z.object({
   status: z.enum(["COMPLETED", "COMPLETED_WITH_ISSUE"]),
@@ -66,6 +83,10 @@ export default function SessionDetailPage() {
   const [photoCaptureOpen, setPhotoCaptureOpen] = useState(false);
   const [hasIssue, setHasIssue] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
+  const [documentName, setDocumentName] = useState("");
 
   const form = useForm<SubmitInput>({
     resolver: zodResolver(submitSchema),
@@ -76,10 +97,16 @@ export default function SessionDetailPage() {
   });
 
   async function handlePhotoCapture(imageData: string, caption: string) {
+    const file = dataUrlToFile(imageData, `photo-${Date.now()}.jpg`);
+    const formData = new FormData();
+    formData.append("file", file);
+    if (caption) {
+      formData.append("caption", caption);
+    }
+
     const res = await fetch(`/api/sessions/${sessionId}/photos`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: imageData, caption }),
+      body: formData,
     });
 
     if (!res.ok) {
@@ -111,6 +138,67 @@ export default function SessionDetailPage() {
       toast.error(error instanceof Error ? error.message : "Gagal hapus foto");
     } finally {
       setDeletingPhotoId(null);
+    }
+  }
+
+  async function handleDocumentUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedDocument) {
+      toast.error("Pilih dokumen terlebih dahulu");
+      return;
+    }
+
+    setUploadingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedDocument);
+      if (documentName.trim()) {
+        formData.append("name", documentName.trim());
+      }
+
+      const res = await fetch(`/api/sessions/${sessionId}/documents`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to upload document");
+      }
+
+      toast.success("Dokumen berhasil diupload");
+      setSelectedDocument(null);
+      setDocumentName("");
+      (event.currentTarget as HTMLFormElement).reset();
+      await refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal upload dokumen");
+    } finally {
+      setUploadingDoc(false);
+    }
+  }
+
+  async function handleDeleteDocument(documentId: string) {
+    if (!confirm("Hapus dokumen ini?")) return;
+
+    setDeletingDocumentId(documentId);
+    try {
+      const res = await fetch(
+        `/api/sessions/${sessionId}/documents?documentId=${documentId}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete document");
+      }
+
+      toast.success("Dokumen berhasil dihapus");
+      await refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal hapus dokumen");
+    } finally {
+      setDeletingDocumentId(null);
     }
   }
 
@@ -163,9 +251,16 @@ export default function SessionDetailPage() {
   }
 
   const isSubmitted = session.status !== "DRAFT";
+  const requirementType = session.schedule.program.requirementType as RequirementType;
+  const minUploads = session.schedule.program.minUploads;
   const photoCount = session.photos.length;
-  const minPhotos = session.schedule.program.minPhotos;
-  const canSubmit = !isSubmitted && photoCount >= minPhotos;
+  const documentCount = session.documents.length;
+  const proofCount = requirementType === "PHOTO" ? photoCount : documentCount;
+  const canSubmit = !isSubmitted && proofCount >= minUploads;
+
+  const requirementLabel = useMemo(() => {
+    return requirementType === "PHOTO" ? "Foto" : "Dokumen";
+  }, [requirementType]);
 
   return (
     <div className="space-y-4">
@@ -217,77 +312,165 @@ export default function SessionDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Photos Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Foto Bukti</CardTitle>
-            <Badge variant={photoCount >= minPhotos ? "default" : "secondary"}>
-              {photoCount}/{minPhotos} foto
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {session.photos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed rounded-lg">
-              <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-2" />
-              <p className="text-muted-foreground text-sm">Belum ada foto</p>
-              {!isSubmitted && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Upload minimal {minPhotos} foto untuk submit
-                </p>
-              )}
+      {requirementType === "PHOTO" ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Foto Bukti</CardTitle>
+              <Badge variant={photoCount >= minUploads ? "default" : "secondary"}>
+                {photoCount}/{minUploads} foto
+              </Badge>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {session.photos.map((photo) => (
-                <div
-                  key={photo.id}
-                  className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
-                >
-                  <img
-                    src={photo.url}
-                    alt={photo.caption || "Photo"}
-                    className="w-full h-full object-cover"
-                  />
-                  {!isSubmitted && (
-                    <button
-                      onClick={() => handleDeletePhoto(photo.id)}
-                      disabled={deletingPhotoId === photo.id}
-                      className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      {deletingPhotoId === photo.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <X className="h-3 w-3" />
-                      )}
-                    </button>
-                  )}
-                  {photo.caption && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1.5 line-clamp-1">
-                      {photo.caption}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+          </CardHeader>
+          <CardContent>
+            {session.photos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed rounded-lg">
+                <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-2" />
+                <p className="text-muted-foreground text-sm">Belum ada foto</p>
+                {!isSubmitted && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload minimal {minUploads} foto untuk submit
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {session.photos.map((photo) => (
+                  <div
+                    key={photo.id}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.caption || "Photo"}
+                      className="w-full h-full object-cover"
+                    />
+                    {!isSubmitted && (
+                      <button
+                        onClick={() => handleDeletePhoto(photo.id)}
+                        disabled={deletingPhotoId === photo.id}
+                        className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        {deletingPhotoId === photo.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
+                      </button>
+                    )}
+                    {photo.caption && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1.5 line-clamp-1">
+                        {photo.caption}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* Upload Button */}
-          {!isSubmitted && (
-            <div className="mt-4">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setPhotoCaptureOpen(true)}
-              >
-                <Camera className="mr-2 h-4 w-4" />
-                Ambil / Upload Foto
-              </Button>
+            {!isSubmitted && (
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setPhotoCaptureOpen(true)}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Ambil / Upload Foto
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Dokumen Bukti</CardTitle>
+              <Badge variant={documentCount >= minUploads ? "default" : "secondary"}>
+                {documentCount}/{minUploads} dokumen
+              </Badge>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {session.documents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed rounded-lg">
+                <FileText className="h-12 w-12 text-muted-foreground/50 mb-2" />
+                <p className="text-muted-foreground text-sm">Belum ada dokumen</p>
+                {!isSubmitted && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload minimal {minUploads} dokumen untuk submit
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {session.documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between rounded-md border p-3 text-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{doc.filename}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" asChild>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </Button>
+                      {!isSubmitted && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          disabled={deletingDocumentId === doc.id}
+                        >
+                          {deletingDocumentId === doc.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <X className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isSubmitted && (
+              <form onSubmit={handleDocumentUpload} className="space-y-3">
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    setSelectedDocument(file || null);
+                    setDocumentName(file?.name ?? "");
+                  }}
+                />
+                <Input
+                  placeholder="Nama dokumen (opsional)"
+                  value={documentName}
+                  onChange={(e) => setDocumentName(e.target.value)}
+                />
+                <Button type="submit" className="w-full" disabled={!selectedDocument || uploadingDoc}>
+                  {uploadingDoc ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Mengunggah...
+                    </>
+                  ) : (
+                    "Upload Dokumen"
+                  )}
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Submit Actions */}
       {!isSubmitted && (
@@ -313,18 +496,20 @@ export default function SessionDetailPage() {
           </Button>
           {!canSubmit && (
             <p className="text-xs text-center text-muted-foreground">
-              Upload minimal {minPhotos} foto untuk dapat submit
+              Upload minimal {minUploads} {requirementLabel.toLowerCase()} untuk dapat submit
             </p>
           )}
         </div>
       )}
 
       {/* Photo Capture Dialog */}
-      <PhotoCaptureDialog
-        open={photoCaptureOpen}
-        onOpenChange={setPhotoCaptureOpen}
-        onCapture={handlePhotoCapture}
-      />
+      {requirementType === "PHOTO" && (
+        <PhotoCaptureDialog
+          open={photoCaptureOpen}
+          onOpenChange={setPhotoCaptureOpen}
+          onCapture={handlePhotoCapture}
+        />
+      )}
 
       {/* Submit Dialog */}
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>

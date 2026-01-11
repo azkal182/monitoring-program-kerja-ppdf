@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Clock,
   Camera,
+  FileText,
   CheckCircle,
   AlertCircle,
   XCircle,
@@ -155,8 +156,12 @@ export default function FieldTodayPage() {
                             {schedule.program.scheduleTime || "--:--"}
                           </span>
                           <span className="flex items-center gap-1">
-                            <Camera className="h-3.5 w-3.5" />
-                            Min. {schedule.program.minPhotos} foto
+                            {schedule.program.requirementType === "PHOTO" ? (
+                              <Camera className="h-3.5 w-3.5" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5" />
+                            )}
+                            Min. {schedule.program.minUploads} {schedule.program.requirementType === "PHOTO" ? "foto" : "dokumen"}
                           </span>
                         </div>
                         <Badge variant="outline" className="mt-1 text-xs">

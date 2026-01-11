@@ -3,6 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScheduleType } from "@prisma/client";
 
+export type RequirementType = "PHOTO" | "DOCUMENT";
+
 export interface Program {
   id: string;
   name: string;
@@ -12,7 +14,8 @@ export interface Program {
   scheduleMonthDays: number[];
   customDates: string[];
   scheduleTime: string | null;
-  minPhotos: number;
+  requirementType: RequirementType;
+  minUploads: number;
   isActive: boolean;
   divisionId: string;
   division: { id: string; name: string };
@@ -29,7 +32,8 @@ export interface ProgramInput {
   scheduleMonthDays: number[];
   customDates: string[];
   scheduleTime: string;
-  minPhotos: number;
+  requirementType: RequirementType;
+  minUploads: number;
   isActive: boolean;
   divisionId: string;
 }

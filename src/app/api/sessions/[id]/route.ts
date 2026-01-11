@@ -25,6 +25,7 @@ export async function GET(
           },
         },
         photos: true,
+        documents: true,
       },
     });
 
@@ -118,6 +119,7 @@ export async function PUT(
         user: { select: { id: true, name: true } },
         schedule: { include: { program: true } },
         photos: true,
+        documents: true,
       },
     });
 

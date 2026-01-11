@@ -3,6 +3,13 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/storage";
 
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+];
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -39,21 +46,25 @@ export async function POST(
 
     if (session.status !== "DRAFT") {
       return NextResponse.json(
-        { error: "Sesi sudah disubmit, tidak dapat menambah foto" },
+        { error: "Sesi sudah disubmit, tidak dapat menambah dokumen" },
         { status: 400 }
       );
     }
 
     const formData = await request.formData();
     const file = formData.get("file");
-    const caption = formData.get("caption");
+    const displayName = formData.get("name");
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: "File tidak ditemukan" }, { status: 400 });
     }
 
-    if (!file.type?.startsWith("image/")) {
-      return NextResponse.json({ error: "File harus berupa gambar" }, { status: 400 });
+    if (file.size === 0) {
+      return NextResponse.json({ error: "File kosong" }, { status: 400 });
+    }
+
+    if (file.type && !ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json({ error: "Tipe file tidak didukung" }, { status: 400 });
     }
 
     const arrayBuffer = await file.arrayBuffer();
@@ -62,24 +73,24 @@ export async function POST(
     const uploadResult = await uploadFile({
       buffer,
       contentType: file.type || "application/octet-stream",
-      directory: `sessions/${sessionId}/photos`,
+      directory: `sessions/${sessionId}/documents`,
       fileName: file.name,
     });
 
-    const photo = await prisma.photo.create({
+    const document = await prisma.document.create({
       data: {
         url: uploadResult.url,
-        caption: caption ? String(caption).slice(0, 200) : null,
+        filename: (displayName ? String(displayName) : file.name).slice(0, 190),
         storagePath: uploadResult.storagePath,
         sessionId,
       },
     });
 
-    return NextResponse.json(photo, { status: 201 });
+    return NextResponse.json(document, { status: 201 });
   } catch (error) {
-    console.error("Error uploading photo:", error);
+    console.error("Error uploading document:", error);
     return NextResponse.json(
-      { error: "Gagal mengupload foto" },
+      { error: "Gagal mengupload dokumen" },
       { status: 500 }
     );
   }
@@ -97,16 +108,16 @@ export async function GET(
 
     const { id: sessionId } = await params;
 
-    const photos = await prisma.photo.findMany({
+    const documents = await prisma.document.findMany({
       where: { sessionId },
       orderBy: { createdAt: "asc" },
     });
 
-    return NextResponse.json(photos);
+    return NextResponse.json(documents);
   } catch (error) {
-    console.error("Error fetching photos:", error);
+    console.error("Error fetching documents:", error);
     return NextResponse.json(
-      { error: "Gagal mengambil foto" },
+      { error: "Gagal mengambil dokumen" },
       { status: 500 }
     );
   }
@@ -124,10 +135,10 @@ export async function DELETE(
 
     const { id: sessionId } = await params;
     const { searchParams } = new URL(request.url);
-    const photoId = searchParams.get("photoId");
+    const documentId = searchParams.get("documentId");
 
-    if (!photoId) {
-      return NextResponse.json({ error: "Photo ID required" }, { status: 400 });
+    if (!documentId) {
+      return NextResponse.json({ error: "Document ID required" }, { status: 400 });
     }
 
     const session = await prisma.session.findUnique({ where: { id: sessionId } });
@@ -156,27 +167,27 @@ export async function DELETE(
       );
     }
 
-    const photo = await prisma.photo.findFirst({
-      where: { id: photoId, sessionId },
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, sessionId },
     });
 
-    if (!photo) {
+    if (!document) {
       return NextResponse.json(
-        { error: "Foto tidak ditemukan" },
+        { error: "Dokumen tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    await prisma.photo.delete({ where: { id: photo.id } });
-    if (photo.storagePath) {
-      await deleteFile(photo.storagePath).catch(() => undefined);
+    await prisma.document.delete({ where: { id: document.id } });
+    if (document.storagePath) {
+      await deleteFile(document.storagePath).catch(() => undefined);
     }
 
-    return NextResponse.json({ message: "Foto berhasil dihapus" });
+    return NextResponse.json({ message: "Dokumen berhasil dihapus" });
   } catch (error) {
-    console.error("Error deleting photo:", error);
+    console.error("Error deleting document:", error);
     return NextResponse.json(
-      { error: "Gagal menghapus foto" },
+      { error: "Gagal menghapus dokumen" },
       { status: 500 }
     );
   }

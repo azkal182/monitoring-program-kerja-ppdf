@@ -220,7 +220,7 @@ export default function DivisionDetailPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Camera className="h-4 w-4" />
-                          <span>Minimal {program.minPhotos} foto</span>
+                          <span>Minimal  {program.minUploads} {program.requirementType === "PHOTO" ? "foto" : "dokumen"}</span>
                         </div>
                       </CardContent>
                     </Card>

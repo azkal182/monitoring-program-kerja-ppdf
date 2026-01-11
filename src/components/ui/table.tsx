@@ -5,15 +5,26 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 type TableProps = React.ComponentProps<"table"> & {
+  containerClassName?: string;
   wrapperClassName?: string;
 };
 
-function Table({ className, wrapperClassName, ...props }: TableProps) {
+function Table({ className, containerClassName, wrapperClassName, ...props }: TableProps) {
   return (
     <div
       data-slot="table-container"
       className={cn("relative w-full overflow-x-auto", wrapperClassName)}
     >
+      <div
+        data-slot="table-outer-container"
+        className={cn(containerClassName)}
+      >
+        <table
+          data-slot="table"
+          className={cn("w-full caption-bottom text-sm", className)}
+          {...props}
+        />
+      </div>
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}

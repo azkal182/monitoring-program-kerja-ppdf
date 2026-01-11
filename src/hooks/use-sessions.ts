@@ -10,6 +10,13 @@ export interface SessionPhoto {
   createdAt: string;
 }
 
+export interface SessionDocument {
+  id: string;
+  url: string;
+  filename: string;
+  createdAt: string;
+}
+
 export interface Session {
   id: string;
   status: SessionStatus;
@@ -27,11 +34,13 @@ export interface Session {
       id: string;
       name: string;
       scheduleTime: string | null;
-      minPhotos: number;
+      requirementType: "PHOTO" | "DOCUMENT";
+      minUploads: number;
       division: { id: string; name: string };
     };
   };
   photos: SessionPhoto[];
+  documents: SessionDocument[];
   createdAt: string;
 }
 
@@ -43,7 +52,8 @@ export interface ScheduleWithSession {
     name: string;
     description: string | null;
     scheduleTime: string | null;
-    minPhotos: number;
+    requirementType: "PHOTO" | "DOCUMENT";
+    minUploads: number;
     division: { id: string; name: string };
   };
   sessions: Session[];

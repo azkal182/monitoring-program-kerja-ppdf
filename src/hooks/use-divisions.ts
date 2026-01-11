@@ -27,7 +27,8 @@ export interface DivisionProgram {
   description: string | null;
   scheduleType: "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM";
   scheduleTime: string | null;
-  minPhotos: number;
+  requirementType: "PHOTO" | "DOCUMENT";
+  minUploads: number;
   isActive: boolean;
 }
 
