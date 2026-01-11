@@ -32,6 +32,7 @@ const navigation = [
   { name: "Pengguna", href: "/dashboard/users", icon: Users, adminOnly: true },
   { name: "Program Kerja", href: "/dashboard/programs", icon: ClipboardList },
   { name: "Jadwal", href: "/dashboard/schedules", icon: Calendar },
+  { name: "Kalender", href: "/dashboard/calendar", icon: Calendar },
   { name: "Monitoring", href: "/dashboard/monitoring", icon: BarChart3 },
 ];
 

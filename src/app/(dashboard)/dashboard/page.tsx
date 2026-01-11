@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import Link from "next/link";
+
 import {
   Card,
   CardContent,
@@ -6,7 +8,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Building2, Users, ClipboardList, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Building2, Users, ClipboardList, CheckCircle, CalendarDays } from "lucide-react";
 import prisma from "@/lib/prisma";
 
 async function getStats() {
@@ -39,6 +43,23 @@ export default async function DashboardPage() {
           Selamat datang, {session?.user?.name}!
         </p>
       </div>
+
+      <Card className="shadow-sm">
+        <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CalendarDays className="h-5 w-5" />
+              Kalender Program Kerja
+            </CardTitle>
+            <CardDescription>
+              Lihat jadwal program dalam tampilan kalender bulanan dan kelola program non-harian dengan mudah.
+            </CardDescription>
+          </div>
+          <Button asChild size="sm" className="mt-2 w-full sm:mt-0 sm:w-auto">
+            <Link href="/dashboard/calendar">Buka Kalender</Link>
+          </Button>
+        </CardHeader>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
