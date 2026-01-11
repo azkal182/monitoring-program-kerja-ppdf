@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ScheduleType } from "@prisma/client";
+import { ScheduleType } from "@/generated/prisma/enums";
 
 export type RequirementType = "PHOTO" | "DOCUMENT";
 

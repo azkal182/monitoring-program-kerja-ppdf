@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2, Plus, X, CalendarIcon } from "lucide-react";
-import { ScheduleType } from "@prisma/client";
+import { ScheduleType } from "@/generated/prisma/enums";
 
 import { z } from "zod";
 import { format } from "date-fns";

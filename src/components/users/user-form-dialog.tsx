@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/enums";
 
 import { userSchema, type UserInput } from "@/lib/validations/user";
 import { useCreateUser, useUpdateUser, type User } from "@/hooks/use-users";

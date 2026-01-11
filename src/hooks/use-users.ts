@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/enums";
 
 export interface User {
   id: string;

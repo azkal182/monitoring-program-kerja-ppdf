@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/enums";
 
 export const userSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter"),

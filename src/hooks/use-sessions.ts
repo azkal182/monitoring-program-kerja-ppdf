@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { SessionStatus } from "@prisma/client";
+import { SessionStatus } from "@/generated/prisma/enums";
 
 export interface SessionPhoto {
   id: string;

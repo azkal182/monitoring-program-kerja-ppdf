@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SessionStatus } from "@prisma/client";
+import { SessionStatus } from "@/generated/prisma/enums";
 
 export const sessionStartSchema = z.object({
   scheduleId: z.string().min(1, "Schedule ID required"),

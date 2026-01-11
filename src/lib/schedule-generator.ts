@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
-import { ScheduleType } from "@prisma/client";
+import { Prisma } from "@/generated/prisma/client";
+import { ScheduleType } from "@/generated/prisma/enums";
+
 import {
   getJakartaDateKey,
   startOfJakartaDayUtc,
@@ -51,17 +53,7 @@ export async function generateSchedulesForDate(date: Date): Promise<number> {
 
     if (!shouldCreateSchedule) continue;
 
-    // Check if schedule already exists for this date
-    const existing = await prisma.scheduleInstance.findUnique({
-      where: {
-        programId_date: {
-          programId: program.id,
-          date: dateUtc,
-        },
-      },
-    });
-
-    if (!existing) {
+    try {
       await prisma.scheduleInstance.create({
         data: {
           programId: program.id,
@@ -70,6 +62,15 @@ export async function generateSchedulesForDate(date: Date): Promise<number> {
       });
       createdCount++;
       console.log(`Created schedule for "${program.name}" on ${dateKey}`);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        // Another request already created this entry; treat as success for idempotency
+        continue;
+      }
+      throw error;
     }
   }
 
