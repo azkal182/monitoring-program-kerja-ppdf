@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, FormEvent } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -258,9 +258,7 @@ export default function SessionDetailPage() {
   const proofCount = requirementType === "PHOTO" ? photoCount : documentCount;
   const canSubmit = !isSubmitted && proofCount >= minUploads;
 
-  const requirementLabel = useMemo(() => {
-    return requirementType === "PHOTO" ? "Foto" : "Dokumen";
-  }, [requirementType]);
+  const requirementLabel = requirementType === "PHOTO" ? "Foto" : "Dokumen";
 
   return (
     <div className="space-y-4">
