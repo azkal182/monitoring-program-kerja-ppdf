@@ -7,13 +7,18 @@ import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { DashboardSidebar, DashboardUserMenu } from "@/components/dashboard/sidebar";
+import {
+  DashboardSidebar,
+  DashboardUserMenu,
+} from "@/components/dashboard/sidebar";
 
 interface DashboardLayoutHeaderProps {
   showSearch?: boolean;
 }
 
-export function DashboardLayoutHeader({ showSearch = false }: DashboardLayoutHeaderProps) {
+export function DashboardLayoutHeader({
+  showSearch = false,
+}: DashboardLayoutHeaderProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
@@ -29,7 +34,10 @@ export function DashboardLayoutHeader({ showSearch = false }: DashboardLayoutHea
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex w-72 flex-col p-0">
-              <DashboardSidebar variant="sheet" onNavigate={() => setSheetOpen(false)} />
+              <DashboardSidebar
+                variant="sheet"
+                onNavigate={() => setSheetOpen(false)}
+              />
             </SheetContent>
           </Sheet>
           <Link href="/dashboard" className="text-lg font-semibold sm:text-xl">
@@ -60,7 +68,7 @@ export function DashboardLayoutHeader({ showSearch = false }: DashboardLayoutHea
 }
 
 function getPageTitle(pathname: string) {
-  if (pathname.startsWith("/dashboard/divisions")) return "Divisi";
+  if (pathname.startsWith("/dashboard/divisions")) return "Departemen";
   if (pathname.startsWith("/dashboard/users")) return "Pengguna";
   if (pathname.startsWith("/dashboard/programs")) return "Program Kerja";
   if (pathname.startsWith("/dashboard/schedules")) return "Jadwal";

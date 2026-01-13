@@ -1,3 +1,7 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { formatDate, getJakartaDayName } from "@/lib/utils";
 import {
   Card,
@@ -8,12 +12,32 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, CheckCircle, AlertCircle, XCircle } from "lucide-react";
-import { getTodaySchedules } from "@/lib/schedule-generator";
+import { useDivisions } from "@/hooks/use-divisions";
+import { useTodaySchedules, type ScheduleWithSession } from "@/hooks/use-sessions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export default async function SchedulesPage() {
-  const schedules = await getTodaySchedules();
+export default function SchedulesPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+  const [selectedDivisionId, setSelectedDivisionId] = useState("all");
+  const { data: schedules, isLoading } = useTodaySchedules();
+  const { data: divisions } = useDivisions();
 
-  function getStatusBadge(sessions: typeof schedules[0]["sessions"]) {
+  const filteredSchedules = useMemo(() => {
+    if (!schedules) return [];
+    if (selectedDivisionId === "all") return schedules;
+    return schedules.filter(
+      (schedule) => schedule.program.division.id === selectedDivisionId
+    );
+  }, [schedules, selectedDivisionId]);
+
+  function getStatusBadge(sessions: ScheduleWithSession["sessions"]) {
     if (sessions.length === 0) {
       return <Badge variant="outline">Belum dimulai</Badge>;
     }
@@ -34,16 +58,38 @@ export default async function SchedulesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Jadwal Hari Ini</h1>
           <p className="text-muted-foreground">
             {formatDate(new Date())} ({getJakartaDayName(new Date())})
           </p>
         </div>
+        {isAdmin && (
+          <Select
+            value={selectedDivisionId}
+            onValueChange={(value) => setSelectedDivisionId(value)}
+          >
+            <SelectTrigger className="w-full md:w-64">
+              <SelectValue placeholder="Semua Divisi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Divisi</SelectItem>
+              {divisions?.map((division) => (
+                <SelectItem key={division.id} value={division.id}>
+                  {division.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
-      {schedules.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : filteredSchedules.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -55,7 +101,7 @@ export default async function SchedulesPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {schedules.map((schedule) => (
+          {filteredSchedules.map((schedule) => (
             <Card key={schedule.id}>
               <CardContent className="flex items-center gap-4 p-4">
                 <div

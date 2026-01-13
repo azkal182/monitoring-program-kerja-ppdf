@@ -29,16 +29,32 @@ import { Badge } from "@/components/ui/badge";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Divisi", href: "/dashboard/divisions", icon: Building2, adminOnly: true },
+  {
+    name: "Departemen",
+    href: "/dashboard/divisions",
+    icon: Building2,
+    adminOnly: true,
+  },
   { name: "Pengguna", href: "/dashboard/users", icon: Users, adminOnly: true },
   { name: "Program Kerja", href: "/dashboard/programs", icon: ClipboardList },
   { name: "Jadwal", href: "/dashboard/schedules", icon: Calendar },
   { name: "Kalender", href: "/dashboard/calendar", icon: Calendar },
-  { name: "Notifikasi", href: "/dashboard/push-notifications", icon: Bell, adminOnly: true },
+  {
+    name: "Notifikasi",
+    href: "/dashboard/push-notifications",
+    icon: Bell,
+    adminOnly: true,
+  },
   { name: "Monitoring", href: "/dashboard/monitoring", icon: BarChart3 },
 ];
 
-function NavItems({ className, onClick }: { className?: string; onClick?: () => void }) {
+function NavItems({
+  className,
+  onClick,
+}: {
+  className?: string;
+  onClick?: () => void;
+}) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
@@ -50,8 +66,10 @@ function NavItems({ className, onClick }: { className?: string; onClick?: () => 
         .map((item) => {
           const isActive =
             pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")) ||
-            (item.href === "/dashboard" && (pathname === "/dashboard" || pathname === "/dashboard/"));
+            (item.href !== "/dashboard" &&
+              pathname.startsWith(item.href + "/")) ||
+            (item.href === "/dashboard" &&
+              (pathname === "/dashboard" || pathname === "/dashboard/"));
           return (
             <Link
               key={item.name}
@@ -67,7 +85,9 @@ function NavItems({ className, onClick }: { className?: string; onClick?: () => 
               <span
                 className={cn(
                   "absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full transition-all",
-                  isActive ? "bg-primary opacity-100" : "bg-transparent opacity-0 group-hover:opacity-40 group-hover:bg-muted-foreground"
+                  isActive
+                    ? "bg-primary opacity-100"
+                    : "bg-transparent opacity-0 group-hover:opacity-40 group-hover:bg-muted-foreground"
                 )}
               />
               <item.icon className="h-5 w-5" />
@@ -120,7 +140,9 @@ export function DashboardUserMenu({
           </Avatar>
           <div className="flex flex-1 flex-col items-start text-left">
             <span className="text-sm font-medium">{user.name}</span>
-            <span className="text-xs text-muted-foreground">@{session?.user?.username}</span>
+            <span className="text-xs text-muted-foreground">
+              @{session?.user?.username}
+            </span>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>

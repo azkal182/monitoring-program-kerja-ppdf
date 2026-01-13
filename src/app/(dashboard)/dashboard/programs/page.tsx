@@ -1,10 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, MoreHorizontal, Pencil, Trash2, ClipboardList, Clock, Camera, FileText } from "lucide-react";
+import {
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  ClipboardList,
+  Clock,
+  Camera,
+  FileText,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import { usePrograms, useDeleteProgram, type Program } from "@/hooks/use-programs";
+import { useDivisions } from "@/hooks/use-divisions";
+import {
+  usePrograms,
+  useDeleteProgram,
+  type Program,
+} from "@/hooks/use-programs";
 import { getDayName } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +43,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ProgramFormDialog } from "@/components/programs/program-form-dialog";
 
 const scheduleTypeLabels = {
@@ -39,7 +60,13 @@ const scheduleTypeLabels = {
 };
 
 export default function ProgramsPage() {
-  const { data: programs, isLoading } = usePrograms();
+  const [selectedDivisionId, setSelectedDivisionId] = useState<string>("all");
+  const { data: divisions } = useDivisions();
+  const { data: programs, isLoading } = usePrograms(
+    selectedDivisionId !== "all"
+      ? { divisionId: selectedDivisionId }
+      : undefined
+  );
   const deleteMutation = useDeleteProgram();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
@@ -61,30 +88,51 @@ export default function ProgramsPage() {
       await deleteMutation.mutateAsync(program.id);
       toast.success("Program berhasil dihapus");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal menghapus program");
+      toast.error(
+        error instanceof Error ? error.message : "Gagal menghapus program"
+      );
     }
   }
 
   function formatDays(days: number[]): string {
     if (days.length === 7) return "Setiap hari";
     if (days.length === 6 && !days.includes(0)) return "Senin - Sabtu";
-    if (days.length === 5 && !days.includes(0) && !days.includes(6)) return "Senin - Jumat";
+    if (days.length === 5 && !days.includes(0) && !days.includes(6))
+      return "Senin - Jumat";
     return days.map((d) => getDayName(d).slice(0, 3)).join(", ");
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Program Kerja</h1>
           <p className="text-muted-foreground">
-            Kelola program kerja setiap divisi
+            Kelola program kerja setiap Departemen/Asrama
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Tambah Program
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Select
+            value={selectedDivisionId}
+            onValueChange={(value) => setSelectedDivisionId(value)}
+          >
+            <SelectTrigger className="w-full sm:w-64">
+              <SelectValue placeholder="Semua Divisi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Departemen</SelectItem>
+              {divisions?.map((division) => (
+                <SelectItem key={division.id} value={division.id}>
+                  {division.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Tambah Program
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -115,6 +163,7 @@ export default function ProgramsPage() {
                     <TableRow>
                       <TableHead>Program</TableHead>
                       <TableHead>Divisi</TableHead>
+                      <TableHead>Tipe</TableHead>
                       <TableHead>Jadwal</TableHead>
                       <TableHead className="text-center">Bukti</TableHead>
                       <TableHead className="text-center">Status</TableHead>
@@ -135,7 +184,14 @@ export default function ProgramsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{program.division.name}</Badge>
+                          <Badge variant="outline">
+                            {program.division.name}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {scheduleTypeLabels[program.scheduleType]}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 text-sm">
@@ -154,12 +210,17 @@ export default function ProgramsPage() {
                               <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                             )}
                             <span>
-                              {program.minUploads} {program.requirementType === "PHOTO" ? "foto" : "dokumen"}
+                              {program.minUploads}{" "}
+                              {program.requirementType === "PHOTO"
+                                ? "foto"
+                                : "dokumen"}
                             </span>
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant={program.isActive ? "default" : "secondary"}>
+                          <Badge
+                            variant={program.isActive ? "default" : "secondary"}
+                          >
                             {program.isActive ? "Aktif" : "Nonaktif"}
                           </Badge>
                         </TableCell>
@@ -171,7 +232,9 @@ export default function ProgramsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(program)}>
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(program)}
+                              >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
@@ -193,16 +256,28 @@ export default function ProgramsPage() {
 
               <div className="grid gap-3 md:hidden">
                 {programs?.map((program) => (
-                  <div key={program.id} className="rounded-lg border bg-card p-4 shadow-sm">
+                  <div
+                    key={program.id}
+                    className="rounded-lg border bg-card p-4 shadow-sm"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <p className="text-base font-semibold leading-tight">{program.name}</p>
+                        <p className="text-base font-semibold leading-tight">
+                          {program.name}
+                        </p>
                         {program.description && (
                           <p className="text-sm text-muted-foreground line-clamp-2">
                             {program.description}
                           </p>
                         )}
-                        <Badge variant="outline">{program.division.name}</Badge>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline">
+                            {program.division.name}
+                          </Badge>
+                          <Badge variant="secondary">
+                            {scheduleTypeLabels[program.scheduleType]}
+                          </Badge>
+                        </div>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -229,7 +304,9 @@ export default function ProgramsPage() {
                     <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        <span>{program.scheduleTime || "Tidak dijadwalkan"}</span>
+                        <span>
+                          {program.scheduleTime || "Tidak dijadwalkan"}
+                        </span>
                       </div>
                       <div className="text-xs">
                         {formatDays(program.scheduleDays)}
@@ -241,10 +318,16 @@ export default function ProgramsPage() {
                           <FileText className="h-4 w-4" />
                         )}
                         <span>
-                          Minimal {program.minUploads} {program.requirementType === "PHOTO" ? "foto" : "dokumen"}
+                          Minimal {program.minUploads}{" "}
+                          {program.requirementType === "PHOTO"
+                            ? "foto"
+                            : "dokumen"}
                         </span>
                       </div>
-                      <Badge variant={program.isActive ? "default" : "secondary"} className="w-fit">
+                      <Badge
+                        variant={program.isActive ? "default" : "secondary"}
+                        className="w-fit"
+                      >
                         {program.isActive ? "Aktif" : "Nonaktif"}
                       </Badge>
                     </div>

@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSession } from "next-auth/react";
-import { addMonths, format, isSameMonth, startOfMonth, subMonths } from "date-fns";
+import {
+  addMonths,
+  format,
+  isSameMonth,
+  startOfMonth,
+  subMonths,
+} from "date-fns";
 import { id } from "date-fns/locale";
 import { formatInTimeZone } from "date-fns-tz";
 import {
@@ -18,7 +24,13 @@ import {
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   useProgramCalendar,
   type CalendarEvent,
@@ -40,12 +52,13 @@ const SCHEDULE_ACCENT: Record<string, string> = {
   CUSTOM: "bg-amber-500/90",
 };
 
-const SCHEDULE_INDICATOR_COLOR: Record<CalendarEvent["scheduleType"], string> = {
-  DAILY: "#0ea5e9", // sky-500
-  WEEKLY: "#10b981", // emerald-500
-  MONTHLY: "#8b5cf6", // violet-500
-  CUSTOM: "#f59e0b", // amber-500
-};
+const SCHEDULE_INDICATOR_COLOR: Record<CalendarEvent["scheduleType"], string> =
+  {
+    DAILY: "#0ea5e9", // sky-500
+    WEEKLY: "#10b981", // emerald-500
+    MONTHLY: "#8b5cf6", // violet-500
+    CUSTOM: "#f59e0b", // amber-500
+  };
 
 const WEEKDAY_LABELS = [
   "Minggu",
@@ -86,7 +99,10 @@ export default function CalendarPage() {
     });
   }, [currentMonth, today]);
 
-  const selectedDateKey = useMemo(() => formatJakartaKey(selectedDate, timezone), [selectedDate, timezone]);
+  const selectedDateKey = useMemo(
+    () => formatJakartaKey(selectedDate, timezone),
+    [selectedDate, timezone]
+  );
 
   const dailyAwareEventsByDate = useMemo<EventsByDate>(() => {
     if (!data) return {};
@@ -104,13 +120,17 @@ export default function CalendarPage() {
 
   const monthlyPrograms = useMemo<CalendarProgramSummary[]>(() => {
     if (!data) return [];
-    return data.programs.filter((program) => showDaily || program.scheduleType !== "DAILY");
+    return data.programs.filter(
+      (program) => showDaily || program.scheduleType !== "DAILY"
+    );
   }, [data, showDaily]);
 
   const selectedDayEvents = useMemo<CalendarEvent[]>(() => {
     if (!data) return [];
     const base = data.eventsByDate[selectedDateKey] ?? [];
-    return showDaily ? base : base.filter((event) => event.scheduleType !== "DAILY");
+    return showDaily
+      ? base
+      : base.filter((event) => event.scheduleType !== "DAILY");
   }, [data, selectedDateKey, showDaily]);
 
   const hasData = data ? Object.keys(data.eventsByDate).length > 0 : false;
@@ -128,7 +148,8 @@ export default function CalendarPage() {
 
     const indicatorStyle: CSSProperties = {};
     if (visibleTypes.length === 1) {
-      indicatorStyle.backgroundColor = SCHEDULE_INDICATOR_COLOR[visibleTypes[0]];
+      indicatorStyle.backgroundColor =
+        SCHEDULE_INDICATOR_COLOR[visibleTypes[0]];
     } else if (visibleTypes.length > 1) {
       const segment = 100 / visibleTypes.length;
       const gradientStops = visibleTypes
@@ -219,7 +240,9 @@ export default function CalendarPage() {
             aria-pressed={showDaily}
           >
             <Sun className="h-4 w-4" />
-            {showDaily ? "Sembunyikan Program Harian" : "Tampilkan Program Harian"}
+            {showDaily
+              ? "Sembunyikan Program Harian"
+              : "Tampilkan Program Harian"}
           </Button>
         </div>
       </div>
@@ -232,7 +255,8 @@ export default function CalendarPage() {
               Kalender Bulanan
             </CardTitle>
             <CardDescription>
-              Zona waktu: {timezone.replace("_", " ")} • {isFetching && (
+              Zona waktu: {timezone.replace("_", " ")} •{" "}
+              {isFetching && (
                 <span className="inline-flex items-center gap-1 text-primary">
                   <Loader2 className="h-3 w-3 animate-spin" /> Memuat ulang
                 </span>
@@ -280,7 +304,8 @@ export default function CalendarPage() {
           <CardContent className="space-y-4">
             {selectedDayEvents.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                {showDaily && (data?.eventsByDate[selectedDateKey]?.length ?? 0) > 0
+                {showDaily &&
+                (data?.eventsByDate[selectedDateKey]?.length ?? 0) > 0
                   ? "Semua program pada tanggal ini bersifat harian."
                   : "Tidak ada program yang terjadwal."}
               </div>
@@ -293,15 +318,27 @@ export default function CalendarPage() {
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <p className="font-semibold leading-tight">{event.programName}</p>
-                        <p className="text-xs text-muted-foreground">{event.divisionName}</p>
+                        <p className="font-semibold leading-tight">
+                          {event.programName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {event.divisionName}
+                        </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Badge className={cn("whitespace-nowrap", SCHEDULE_ACCENT[event.scheduleType])}>
+                        <Badge
+                          className={cn(
+                            "whitespace-nowrap",
+                            SCHEDULE_ACCENT[event.scheduleType]
+                          )}
+                        >
                           {SCHEDULE_LABEL[event.scheduleType]}
                         </Badge>
                         {event.scheduleTime && (
-                          <Badge variant="outline" className="whitespace-nowrap">
+                          <Badge
+                            variant="outline"
+                            className="whitespace-nowrap"
+                          >
                             {event.scheduleTime} WIB
                           </Badge>
                         )}
@@ -309,7 +346,10 @@ export default function CalendarPage() {
                     </div>
                     <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                       <span>Minimal bukti: {event.minUploads}</span>
-                      <span>Jenis bukti: {event.requirementType === "PHOTO" ? "Foto" : "Dokumen"}</span>
+                      <span>
+                        Jenis bukti:{" "}
+                        {event.requirementType === "PHOTO" ? "Foto" : "Dokumen"}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -323,11 +363,15 @@ export default function CalendarPage() {
         <CardHeader className="space-y-1">
           <CardTitle className="flex items-center gap-2 text-lg">
             <ListChecks className="h-5 w-5" />
-            Daftar Program Bulanan
+            Daftar Program Kerja Bulan Ini
           </CardTitle>
           <CardDescription>
-            Menampilkan seluruh program yang berjalan selama {format(currentMonth, "MMMM yyyy", { locale: id })}
-            {showDaily ? " (termasuk harian)" : " (tidak termasuk program harian)"}.
+            Menampilkan seluruh program yang berjalan selama{" "}
+            {format(currentMonth, "MMMM yyyy", { locale: id })}
+            {showDaily
+              ? " (termasuk harian)"
+              : " (tidak termasuk program harian)"}
+            .
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -340,20 +384,33 @@ export default function CalendarPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {monthlyPrograms.map((program) => (
-                <div key={program.programId} className="rounded-lg border p-4 shadow-xs">
+                <div
+                  key={program.programId}
+                  className="rounded-lg border p-4 shadow-xs"
+                >
                   <div className="flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold leading-tight">{program.programName}</p>
-                        <p className="text-xs text-muted-foreground">{program.divisionName}</p>
+                        <p className="text-sm font-semibold leading-tight">
+                          {program.programName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {program.divisionName}
+                        </p>
                       </div>
-                      <Badge className={cn("whitespace-nowrap", SCHEDULE_ACCENT[program.scheduleType])}>
+                      <Badge
+                        className={cn(
+                          "whitespace-nowrap",
+                          SCHEDULE_ACCENT[program.scheduleType]
+                        )}
+                      >
                         {SCHEDULE_LABEL[program.scheduleType]}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3" /> {program.occurrenceDates.length} kali
+                        <CalendarDays className="h-3 w-3" />{" "}
+                        {program.occurrenceDates.length} kali
                       </span>
                       {program.scheduleTime && (
                         <span className="inline-flex items-center gap-1">
@@ -361,27 +418,37 @@ export default function CalendarPage() {
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1">
-                        <Minus className="h-3 w-3" /> Bukti minimal {program.minUploads}
+                        <Minus className="h-3 w-3" /> Bukti minimal{" "}
+                        {program.minUploads}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs">
-                      {program.scheduleType === "WEEKLY" && program.scheduleDays.length > 0 && (
-                        <span className="rounded-full bg-muted px-2 py-1">
-                          Hari: {program.scheduleDays
-                            .map((day) => WEEKDAY_LABELS[day] ?? `Hari ke-${day}`)
-                            .join(", ")}
-                        </span>
-                      )}
-                      {program.scheduleType === "MONTHLY" && program.scheduleMonthDays.length > 0 && (
-                        <span className="rounded-full bg-muted px-2 py-1">
-                          Tanggal: {program.scheduleMonthDays.map((day) => day.toString()).join(", ")}
-                        </span>
-                      )}
-                      {program.scheduleType === "CUSTOM" && program.customDates.length > 0 && (
-                        <span className="rounded-full bg-muted px-2 py-1">
-                          Tanggal khusus: {program.customDates.join(", ")}
-                        </span>
-                      )}
+                      {program.scheduleType === "WEEKLY" &&
+                        program.scheduleDays.length > 0 && (
+                          <span className="rounded-full bg-muted px-2 py-1">
+                            Hari:{" "}
+                            {program.scheduleDays
+                              .map(
+                                (day) => WEEKDAY_LABELS[day] ?? `Hari ke-${day}`
+                              )
+                              .join(", ")}
+                          </span>
+                        )}
+                      {program.scheduleType === "MONTHLY" &&
+                        program.scheduleMonthDays.length > 0 && (
+                          <span className="rounded-full bg-muted px-2 py-1">
+                            Tanggal:{" "}
+                            {program.scheduleMonthDays
+                              .map((day) => day.toString())
+                              .join(", ")}
+                          </span>
+                        )}
+                      {program.scheduleType === "CUSTOM" &&
+                        program.customDates.length > 0 && (
+                          <span className="rounded-full bg-muted px-2 py-1">
+                            Tanggal khusus: {program.customDates.join(", ")}
+                          </span>
+                        )}
                     </div>
                   </div>
                 </div>

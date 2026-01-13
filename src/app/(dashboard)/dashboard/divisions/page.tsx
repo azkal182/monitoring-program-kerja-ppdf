@@ -2,10 +2,21 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Plus, MoreHorizontal, Pencil, Trash2, Building2 } from "lucide-react";
+import {
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Building2,
+  Eye,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import { useDivisions, useDeleteDivision, type Division } from "@/hooks/use-divisions";
+import {
+  useDivisions,
+  useDeleteDivision,
+  type Division,
+} from "@/hooks/use-divisions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,7 +46,9 @@ export default function DivisionsPage() {
   const { data: divisions, isLoading } = useDivisions();
   const deleteMutation = useDeleteDivision();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedDivision, setSelectedDivision] = useState<Division | null>(null);
+  const [selectedDivision, setSelectedDivision] = useState<Division | null>(
+    null
+  );
 
   function handleEdit(division: Division) {
     setSelectedDivision(division);
@@ -54,7 +67,9 @@ export default function DivisionsPage() {
       await deleteMutation.mutateAsync(division.id);
       toast.success("Divisi berhasil dihapus");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal menghapus divisi");
+      toast.error(
+        error instanceof Error ? error.message : "Gagal menghapus divisi"
+      );
     }
   }
 
@@ -62,22 +77,22 @@ export default function DivisionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Divisi</h1>
+          <h1 className="text-3xl font-bold">Departemen</h1>
           <p className="text-muted-foreground">
-            Kelola divisi/unit kerja di pondok
+            Kelola Departemen/Asrama kerja di pondok
           </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="mr-2 h-4 w-4" />
-          Tambah Divisi
+          Tambah Departemen
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Divisi</CardTitle>
+          <CardTitle>Daftar Departemen/Asrama</CardTitle>
           <CardDescription>
-            Semua divisi yang terdaftar di sistem
+            Semua Departemen/Asrama yang terdaftar di sistem
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -90,7 +105,7 @@ export default function DivisionsPage() {
               <Building2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <p className="text-muted-foreground">Belum ada divisi</p>
               <Button onClick={handleCreate} variant="link">
-                Tambah divisi pertama
+                Tambah Departemen pertama
               </Button>
             </div>
           ) : (
@@ -101,23 +116,29 @@ export default function DivisionsPage() {
                     <TableRow>
                       <TableHead>Nama</TableHead>
                       <TableHead>Deskripsi</TableHead>
-                      <TableHead className="text-center">Anggota</TableHead>
+                      {/* <TableHead className="text-center">Anggota</TableHead> */}
                       <TableHead className="text-center">Program</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
+                      <TableHead className="w-10">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {divisions?.map((division) => (
                       <TableRow key={division.id}>
-                        <TableCell className="font-medium">{division.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {division.name}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
                           {division.description || "-"}
                         </TableCell>
+                        {/* <TableCell className="text-center">
+                          <Badge variant="secondary">
+                            {division._count?.users || 0}
+                          </Badge>
+                        </TableCell> */}
                         <TableCell className="text-center">
-                          <Badge variant="secondary">{division._count?.users || 0}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline">{division._count?.programs || 0}</Badge>
+                          <Badge variant="outline">
+                            {division._count?.programs || 0}
+                          </Badge>
                         </TableCell>
                         <TableCell className="flex justify-end gap-2">
                           <DropdownMenu>
@@ -127,7 +148,18 @@ export default function DivisionsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(division)}>
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/dashboard/divisions/${division.id}`}
+                                  className="flex items-center"
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Detail
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(division)}
+                              >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
@@ -140,9 +172,6 @@ export default function DivisionsPage() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/dashboard/divisions/${division.id}`}>Detail</Link>
-                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -152,18 +181,27 @@ export default function DivisionsPage() {
 
               <div className="grid gap-3 md:hidden">
                 {divisions?.map((division) => (
-                  <div key={division.id} className="rounded-lg border bg-card p-4 shadow-sm">
+                  <div
+                    key={division.id}
+                    className="rounded-lg border bg-card p-4 shadow-sm"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <p className="text-base font-semibold leading-tight">{division.name}</p>
+                        <p className="text-base font-semibold leading-tight">
+                          {division.name}
+                        </p>
                         {division.description && (
                           <p className="text-sm text-muted-foreground line-clamp-2">
                             {division.description}
                           </p>
                         )}
                         <div className="flex flex-wrap gap-2 text-sm">
-                          <Badge variant="secondary">{division._count?.users || 0} anggota</Badge>
-                          <Badge variant="outline">{division._count?.programs || 0} program</Badge>
+                          <Badge variant="secondary">
+                            {division._count?.users || 0} anggota
+                          </Badge>
+                          <Badge variant="outline">
+                            {division._count?.programs || 0} program
+                          </Badge>
                         </div>
                       </div>
                       <DropdownMenu>
@@ -173,7 +211,9 @@ export default function DivisionsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(division)}>
+                          <DropdownMenuItem
+                            onClick={() => handleEdit(division)}
+                          >
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
@@ -189,10 +229,21 @@ export default function DivisionsPage() {
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button asChild size="sm" variant="outline" className="flex-1">
-                        <Link href={`/dashboard/divisions/${division.id}`}>Detail</Link>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        <Link href={`/dashboard/divisions/${division.id}`}>
+                          Detail
+                        </Link>
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => handleEdit(division)}>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleEdit(division)}
+                      >
                         Edit
                       </Button>
                     </div>
