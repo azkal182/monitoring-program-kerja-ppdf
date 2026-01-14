@@ -30,6 +30,13 @@ export async function GET(
       );
     }
 
+    if (session.user.role !== "ADMIN" && session.user.id !== id) {
+      return NextResponse.json(
+        { error: "Anda tidak memiliki akses ke data ini" },
+        { status: 403 }
+      );
+    }
+
     const { password: _, ...sanitizedUser } = user;
     return NextResponse.json(sanitizedUser);
   } catch (error) {

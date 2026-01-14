@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
 import { ScheduleType } from "@/generated/prisma/enums";
 
 import {
@@ -15,66 +14,69 @@ export async function generateSchedulesForDate(date: Date): Promise<number> {
   const dateKey = getJakartaDateKey(jakartaDate);
   const dateUtc = startOfJakartaDayUtc(jakartaDate);
 
-  // Find all active programs
+  const existingSchedules = await prisma.scheduleInstance.findMany({
+    where: { date: dateUtc },
+    select: { programId: true },
+  });
+  const existingProgramIds = new Set(
+    existingSchedules.map((schedule) => schedule.programId)
+  );
+
   const programs = await prisma.program.findMany({
     where: {
       isActive: true,
+      OR: [
+        {
+          scheduleType: ScheduleType.DAILY,
+          scheduleDays: { has: dayOfWeek },
+        },
+        {
+          scheduleType: ScheduleType.WEEKLY,
+          scheduleDays: { has: dayOfWeek },
+        },
+        {
+          scheduleType: ScheduleType.MONTHLY,
+          scheduleMonthDays: { has: dayOfMonth },
+        },
+        {
+          scheduleType: ScheduleType.CUSTOM,
+        },
+      ],
     },
   });
 
-  let createdCount = 0;
+  const createData: { programId: string; date: Date }[] = [];
 
   for (const program of programs) {
-    let shouldCreateSchedule = false;
+    if (existingProgramIds.has(program.id)) continue;
 
-    switch (program.scheduleType) {
-      case ScheduleType.DAILY:
-        // Check if today's day of week is in scheduleDays
-        shouldCreateSchedule = program.scheduleDays.includes(dayOfWeek);
-        break;
-
-      case ScheduleType.WEEKLY:
-        // Same as daily - check day of week
-        shouldCreateSchedule = program.scheduleDays.includes(dayOfWeek);
-        break;
-
-      case ScheduleType.MONTHLY:
-        // Check if today's day of month is in scheduleMonthDays
-        shouldCreateSchedule = program.scheduleMonthDays.includes(dayOfMonth);
-        break;
-
-      case ScheduleType.CUSTOM:
-        // Check if today matches any of the custom dates
-        shouldCreateSchedule = program.customDates.some((customDate) => {
-          return getJakartaDateKey(customDate) === dateKey;
-        });
-        break;
+    if (program.scheduleType === ScheduleType.CUSTOM) {
+      const isToday = program.customDates.some(
+        (customDate) => getJakartaDateKey(customDate) === dateKey
+      );
+      if (!isToday) continue;
     }
 
-    if (!shouldCreateSchedule) continue;
-
-    try {
-      await prisma.scheduleInstance.create({
-        data: {
-          programId: program.id,
-          date: dateUtc,
-        },
-      });
-      createdCount++;
-      console.log(`Created schedule for "${program.name}" on ${dateKey}`);
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        // Another request already created this entry; treat as success for idempotency
-        continue;
-      }
-      throw error;
-    }
+    createData.push({
+      programId: program.id,
+      date: dateUtc,
+    });
   }
 
-  return createdCount;
+  if (createData.length === 0) {
+    return 0;
+  }
+
+  const result = await prisma.scheduleInstance.createMany({
+    data: createData,
+    skipDuplicates: true,
+  });
+
+  if (result.count > 0) {
+    console.log(`Created ${result.count} schedules for ${dateKey}`);
+  }
+
+  return result.count;
 }
 
 export async function getTodaySchedules(divisionId?: string) {
@@ -95,6 +97,32 @@ export async function getTodaySchedules(divisionId?: string) {
           photos: true,
           documents: true,
         },
+      },
+    },
+    orderBy: { program: { scheduleTime: "asc" } },
+  });
+}
+
+export async function getSchedulesForDate(
+  date: Date | string,
+  divisionId?: string
+) {
+  const dateUtc = startOfJakartaDayUtc(date);
+
+  return prisma.scheduleInstance.findMany({
+    where: {
+      date: dateUtc,
+      ...(divisionId && { program: { divisionId } }),
+    },
+    include: {
+      program: {
+        include: { division: true },
+      },
+      sessions: {
+        include: {
+          user: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: "desc" },
       },
     },
     orderBy: { program: { scheduleTime: "asc" } },

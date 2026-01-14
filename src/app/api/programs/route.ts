@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { programSchema } from "@/lib/validations/program";
+import { parsePagination } from "@/lib/pagination";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const divisionId = searchParams.get("divisionId");
     const isActive = searchParams.get("isActive");
+    const { take, skip } = parsePagination(searchParams);
 
     // Non-admin users can only see their division's programs
     const userDivisionId =
@@ -28,6 +30,8 @@ export async function GET(request: NextRequest) {
         division: { select: { id: true, name: true } },
         _count: { select: { schedules: true } },
       },
+      ...(typeof take === "number" && take > 0 ? { take } : {}),
+      ...(typeof skip === "number" && skip > 0 ? { skip } : {}),
       orderBy: [{ division: { name: "asc" } }, { name: "asc" }],
     });
 

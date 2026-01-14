@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getJakartaDateKey, startOfJakartaDayUtc } from "@/lib/timezone";
+import { assertCronAuth } from "@/lib/cron";
 
 // This endpoint should be called daily at 23:59 Asia/Jakarta.
 // Note: Vercel cron uses UTC, so 23:59 WIB is 16:59 UTC.
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const unauthorized = assertCronAuth(request);
+    if (unauthorized) return unauthorized;
+
     const dateOnly = startOfJakartaDayUtc();
     const jakartaDateKey = getJakartaDateKey(dateOnly);
 
@@ -23,52 +27,109 @@ export async function GET() {
       },
       include: {
         program: {
-          include: { division: true },
+          select: { divisionId: true },
+        },
+        sessions: {
+          select: { id: true, status: true, userId: true },
         },
       },
     });
 
     let failedCount = 0;
+    const draftSessionIds: string[] = [];
+    const schedulesWithDraft = new Set<string>();
+
+    const schedulesNeedingCreate = schedulesWithoutSession.filter(
+      (schedule) => schedule.sessions.length === 0
+    );
+
+    const divisionIds = Array.from(
+      new Set(schedulesNeedingCreate.map((schedule) => schedule.program.divisionId))
+    );
+
+    const coordinators = await prisma.user.findMany({
+      where: {
+        divisionId: { in: divisionIds },
+        role: "KOORDINATOR",
+      },
+      select: { id: true, divisionId: true },
+    });
+
+    const anyUsers = await prisma.user.findMany({
+      where: { divisionId: { in: divisionIds } },
+      select: { id: true, divisionId: true },
+    });
+
+    const assignedByDivision = new Map<string, string>();
+    for (const coordinator of coordinators) {
+      if (!coordinator.divisionId) continue;
+      if (!assignedByDivision.has(coordinator.divisionId)) {
+        assignedByDivision.set(coordinator.divisionId, coordinator.id);
+      }
+    }
+    for (const user of anyUsers) {
+      if (!user.divisionId) continue;
+      if (!assignedByDivision.has(user.divisionId)) {
+        assignedByDivision.set(user.divisionId, user.id);
+      }
+    }
+
+    const createData: {
+      scheduleId: string;
+      userId: string;
+      status: "NOT_EXECUTED";
+      isAutoCreated: boolean;
+      issueNote: string;
+      submittedAt: Date;
+    }[] = [];
 
     for (const schedule of schedulesWithoutSession) {
-      // Check if there's already an auto-created session
-      const existingAutoSession = await prisma.session.findFirst({
-        where: {
+      if (schedule.sessions.some((session) => session.status === "NOT_EXECUTED")) {
+        continue;
+      }
+
+      const draftSessions = schedule.sessions.filter(
+        (session) => session.status === "DRAFT"
+      );
+      if (draftSessions.length > 0) {
+        for (const session of draftSessions) {
+          draftSessionIds.push(session.id);
+        }
+        schedulesWithDraft.add(schedule.id);
+        continue;
+      }
+
+      if (schedule.sessions.length === 0) {
+        const assignedUserId = assignedByDivision.get(schedule.program.divisionId);
+        if (!assignedUserId) continue;
+
+        createData.push({
           scheduleId: schedule.id,
+          userId: assignedUserId,
+          status: "NOT_EXECUTED",
           isAutoCreated: true,
+          issueNote: "Tidak ada laporan yang disubmit",
+          submittedAt: new Date(),
+        });
+      }
+    }
+
+    if (draftSessionIds.length > 0) {
+      await prisma.session.updateMany({
+        where: { id: { in: draftSessionIds } },
+        data: {
+          status: "NOT_EXECUTED",
+          isAutoCreated: true,
+          issueNote: "Tidak ada laporan yang disubmit",
+          submittedAt: new Date(),
         },
       });
+      failedCount += schedulesWithDraft.size;
+    }
 
-      if (!existingAutoSession) {
-        // Find the koordinator of the division to assign the auto-fail session
-        const koordinator = await prisma.user.findFirst({
-          where: {
-            divisionId: schedule.program.divisionId,
-            role: "KOORDINATOR",
-          },
-        });
-
-        // If no koordinator, try to find any user in the division
-        const assignedUser =
-          koordinator ||
-          (await prisma.user.findFirst({
-            where: { divisionId: schedule.program.divisionId },
-          }));
-
-        if (assignedUser) {
-          await prisma.session.create({
-            data: {
-              scheduleId: schedule.id,
-              userId: assignedUser.id,
-              status: "NOT_EXECUTED",
-              isAutoCreated: true,
-              issueNote: "Tidak ada laporan yang disubmit",
-              submittedAt: new Date(),
-            },
-          });
-          failedCount++;
-        }
-      }
+    if (createData.length > 0) {
+      const result = await prisma.session.createMany({ data: createData });
+      failedCount += result.count;
     }
 
     return NextResponse.json({

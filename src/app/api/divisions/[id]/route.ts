@@ -15,6 +15,13 @@ export async function GET(
 
     const { id } = await params;
 
+    if (session.user.role !== "ADMIN" && session.user.divisionId !== id) {
+      return NextResponse.json(
+        { error: "Anda tidak memiliki akses ke divisi ini" },
+        { status: 403 }
+      );
+    }
+
     const division = await prisma.division.findUnique({
       where: { id },
       include: {

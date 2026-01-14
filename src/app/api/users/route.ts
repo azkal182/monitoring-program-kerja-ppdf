@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { userSchema } from "@/lib/validations/user";
 import { hash } from "bcryptjs";
+import { parsePagination } from "@/lib/pagination";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const divisionId = searchParams.get("divisionId");
     const role = searchParams.get("role");
+    const { take, skip } = parsePagination(searchParams);
 
     const users = await prisma.user.findMany({
       where: {
@@ -23,6 +25,8 @@ export async function GET(request: NextRequest) {
       include: {
         division: { select: { id: true, name: true } },
       },
+      ...(typeof take === "number" && take > 0 ? { take } : {}),
+      ...(typeof skip === "number" && skip > 0 ? { skip } : {}),
       orderBy: { name: "asc" },
     });
 

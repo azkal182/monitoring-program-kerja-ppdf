@@ -15,16 +15,35 @@ import {
   CalendarDays,
 } from "lucide-react";
 
-import { useTodaySchedules, useStartSession, type ScheduleWithSession } from "@/hooks/use-sessions";
+import {
+  useTodaySchedules,
+  useStartSession,
+  type ScheduleWithSession,
+} from "@/hooks/use-sessions";
 import { formatDate, formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-function getStatusInfo(schedule: ScheduleWithSession, userId?: string) {
-  const userSession = schedule.sessions.find((s) => s.userId === userId);
+type StatusInfo = {
+  status: string;
+  label: string;
+  icon: typeof Clock;
+  color: string;
+  sessionId?: string;
+  ownerName?: string;
+};
 
-  if (!userSession) {
+function getStatusInfo(schedule: ScheduleWithSession, userId?: string): StatusInfo {
+  const existingSession = schedule.sessions[0];
+
+  if (!existingSession) {
     return {
       status: "pending",
       label: "Belum dimulai",
@@ -33,47 +52,66 @@ function getStatusInfo(schedule: ScheduleWithSession, userId?: string) {
     };
   }
 
-  switch (userSession.status) {
+  const isOwner = existingSession.userId === userId;
+  let baseStatus: StatusInfo;
+
+  switch (existingSession.status) {
     case "DRAFT":
-      return {
+      baseStatus = {
         status: "draft",
         label: "Sedang berjalan",
         icon: Clock,
         color: "bg-amber-100 text-amber-700",
-        sessionId: userSession.id,
+        sessionId: existingSession.id,
       };
+      break;
     case "COMPLETED":
-      return {
+      baseStatus = {
         status: "completed",
         label: "Selesai",
         icon: CheckCircle,
         color: "bg-green-100 text-green-700",
-        sessionId: userSession.id,
+        sessionId: existingSession.id,
       };
+      break;
     case "COMPLETED_WITH_ISSUE":
-      return {
+      baseStatus = {
         status: "issue",
         label: "Terlaksana (kendala)",
         icon: AlertCircle,
         color: "bg-orange-100 text-orange-700",
-        sessionId: userSession.id,
+        sessionId: existingSession.id,
       };
+      break;
     case "NOT_EXECUTED":
-      return {
+      baseStatus = {
         status: "failed",
         label: "Tidak terlaksana",
         icon: XCircle,
         color: "bg-red-100 text-red-700",
-        sessionId: userSession.id,
+        sessionId: existingSession.id,
       };
+      break;
     default:
-      return {
+      baseStatus = {
         status: "unknown",
         label: "Unknown",
         icon: Clock,
         color: "bg-slate-100 text-slate-600",
       };
+      break;
   }
+
+  if (isOwner) {
+    return baseStatus;
+  }
+
+  return {
+    ...baseStatus,
+    status: "locked",
+    sessionId: undefined,
+    ownerName: existingSession.user?.name,
+  };
 }
 
 export default function FieldTodayPage() {
@@ -88,7 +126,9 @@ export default function FieldTodayPage() {
       toast.success("Sesi dimulai!");
       router.push(`/field/session/${session.id}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal memulai sesi");
+      toast.error(
+        error instanceof Error ? error.message : "Gagal memulai sesi"
+      );
     }
   }
 
@@ -141,7 +181,9 @@ export default function FieldTodayPage() {
 
                     <div className="flex flex-1 items-center gap-4 p-4">
                       {/* Icon */}
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${statusInfo.color}`}>
+                      <div
+                        className={`flex h-10 w-10 items-center justify-center rounded-full ${statusInfo.color}`}
+                      >
                         <StatusIcon className="h-5 w-5" />
                       </div>
 
@@ -161,8 +203,14 @@ export default function FieldTodayPage() {
                             ) : (
                               <FileText className="h-3.5 w-3.5" />
                             )}
-                            Min. {schedule.program.minUploads} {schedule.program.requirementType === "PHOTO" ? "foto" : "dokumen"}
+                            Min. {schedule.program.minUploads}{" "}
+                            {schedule.program.requirementType === "PHOTO"
+                              ? "foto"
+                              : "dokumen"}
                           </span>
+                          {statusInfo.ownerName && (
+                            <span>• {statusInfo.ownerName}</span>
+                          )}
                         </div>
                         <Badge variant="outline" className="mt-1 text-xs">
                           {statusInfo.label}
@@ -180,26 +228,33 @@ export default function FieldTodayPage() {
                           Mulai
                         </Button>
                       )}
-                      {statusInfo.status === "draft" && statusInfo.sessionId && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleContinue(statusInfo.sessionId!)}
-                        >
-                          Lanjut
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      )}
-                      {(statusInfo.status === "completed" || statusInfo.status === "issue") && statusInfo.sessionId && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleContinue(statusInfo.sessionId!)}
-                        >
-                          Lihat
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      )}
+                      {statusInfo.status === "draft" &&
+                        statusInfo.sessionId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleContinue(statusInfo.sessionId!)
+                            }
+                          >
+                            Lanjut
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        )}
+                      {(statusInfo.status === "completed" ||
+                        statusInfo.status === "issue") &&
+                        statusInfo.sessionId && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              handleContinue(statusInfo.sessionId!)
+                            }
+                          >
+                            Lihat
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        )}
                     </div>
                   </div>
                 </CardContent>

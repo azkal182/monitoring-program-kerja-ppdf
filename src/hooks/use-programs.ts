@@ -41,6 +41,8 @@ export interface ProgramInput {
 interface FetchProgramsParams {
   divisionId?: string;
   isActive?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 async function fetchPrograms(params?: FetchProgramsParams): Promise<Program[]> {
@@ -48,6 +50,10 @@ async function fetchPrograms(params?: FetchProgramsParams): Promise<Program[]> {
   if (params?.divisionId) searchParams.set("divisionId", params.divisionId);
   if (params?.isActive !== undefined)
     searchParams.set("isActive", String(params.isActive));
+  if (typeof params?.limit === "number")
+    searchParams.set("limit", String(params.limit));
+  if (typeof params?.offset === "number")
+    searchParams.set("offset", String(params.offset));
 
   const res = await fetch(`/api/programs?${searchParams}`);
   if (!res.ok) throw new Error("Failed to fetch programs");

@@ -20,6 +20,19 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Environment Variables
+
+Minimum required:
+
+- `DATABASE_URL` - PostgreSQL connection string.
+
+Optional (recommended):
+
+- `CRON_SECRET` - Bearer token to protect cron endpoints.
+- `MAX_UPLOAD_MB` - Maximum upload size in MB (default: 10).
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` - Web push configuration.
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` - Supabase storage driver.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

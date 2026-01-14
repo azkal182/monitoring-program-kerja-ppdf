@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/storage";
+import { formatBytes, getMaxUploadBytes } from "@/lib/uploads";
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -51,6 +52,13 @@ export async function POST(
       );
     }
 
+    if (session.schedule.program.requirementType !== "DOCUMENT") {
+      return NextResponse.json(
+        { error: "Program ini memerlukan foto, bukan dokumen" },
+        { status: 400 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
     const displayName = formData.get("name");
@@ -61,6 +69,14 @@ export async function POST(
 
     if (file.size === 0) {
       return NextResponse.json({ error: "File kosong" }, { status: 400 });
+    }
+
+    const maxBytes = getMaxUploadBytes();
+    if (file.size > maxBytes) {
+      return NextResponse.json(
+        { error: `Ukuran file maksimal ${formatBytes(maxBytes)}` },
+        { status: 400 }
+      );
     }
 
     if (file.type && !ALLOWED_TYPES.includes(file.type)) {
@@ -107,6 +123,34 @@ export async function GET(
     }
 
     const { id: sessionId } = await params;
+
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        userId: true,
+        schedule: { select: { program: { select: { divisionId: true } } } },
+      },
+    });
+
+    if (!session) {
+      return NextResponse.json(
+        { error: "Sesi tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    const isAdmin = authSession.user.role === "ADMIN";
+    const isKoordinator = authSession.user.role === "KOORDINATOR";
+    const isOwner = session.userId === authSession.user.id;
+    const sameDivision =
+      session.schedule.program.divisionId === authSession.user.divisionId;
+
+    if (!isAdmin && !(isKoordinator && sameDivision) && !isOwner) {
+      return NextResponse.json(
+        { error: "Anda tidak memiliki akses ke sesi ini" },
+        { status: 403 }
+      );
+    }
 
     const documents = await prisma.document.findMany({
       where: { sessionId },

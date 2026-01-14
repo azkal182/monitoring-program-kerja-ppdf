@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   MoreHorizontal,
@@ -61,15 +61,29 @@ const scheduleTypeLabels = {
 
 export default function ProgramsPage() {
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const { data: divisions } = useDivisions();
   const { data: programs, isLoading } = usePrograms(
     selectedDivisionId !== "all"
-      ? { divisionId: selectedDivisionId }
-      : undefined
+      ? {
+          divisionId: selectedDivisionId,
+          limit: pageSize,
+          offset: (page - 1) * pageSize,
+        }
+      : { limit: pageSize, offset: (page - 1) * pageSize }
   );
   const deleteMutation = useDeleteProgram();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
+  const hasNextPage = (programs?.length ?? 0) === pageSize;
+  const hasPrevPage = page > 1;
+
+  useEffect(() => {
+    if (!isLoading && (programs?.length ?? 0) === 0 && page > 1) {
+      setPage((prev) => Math.max(prev - 1, 1));
+    }
+  }, [isLoading, page, programs]);
 
   function handleEdit(program: Program) {
     setSelectedProgram(program);
@@ -114,7 +128,10 @@ export default function ProgramsPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select
             value={selectedDivisionId}
-            onValueChange={(value) => setSelectedDivisionId(value)}
+            onValueChange={(value) => {
+              setSelectedDivisionId(value);
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-full sm:w-64">
               <SelectValue placeholder="Semua Divisi" />
@@ -333,6 +350,29 @@ export default function ProgramsPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Halaman {page}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={!hasPrevPage}
+                  >
+                    Sebelumnya
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((prev) => prev + 1)}
+                    disabled={!hasNextPage}
+                  >
+                    Berikutnya
+                  </Button>
+                </div>
               </div>
             </>
           )}

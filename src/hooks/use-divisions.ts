@@ -45,8 +45,20 @@ export interface DivisionInput {
   description?: string;
 }
 
-async function fetchDivisions(): Promise<Division[]> {
-  const res = await fetch("/api/divisions");
+interface FetchDivisionsParams {
+  limit?: number;
+  offset?: number;
+}
+
+async function fetchDivisions(params?: FetchDivisionsParams): Promise<Division[]> {
+  const searchParams = new URLSearchParams();
+  if (typeof params?.limit === "number")
+    searchParams.set("limit", String(params.limit));
+  if (typeof params?.offset === "number")
+    searchParams.set("offset", String(params.offset));
+
+  const query = searchParams.toString();
+  const res = await fetch(`/api/divisions${query ? `?${query}` : ""}`);
   if (!res.ok) throw new Error("Failed to fetch divisions");
   return res.json();
 }
@@ -94,10 +106,10 @@ async function deleteDivision(id: string): Promise<void> {
   }
 }
 
-export function useDivisions() {
+export function useDivisions(params?: FetchDivisionsParams) {
   return useQuery({
-    queryKey: ["divisions"],
-    queryFn: fetchDivisions,
+    queryKey: ["divisions", params],
+    queryFn: () => fetchDivisions(params),
   });
 }
 

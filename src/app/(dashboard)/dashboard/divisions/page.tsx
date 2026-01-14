@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   MoreHorizontal,
@@ -43,12 +43,25 @@ import { Badge } from "@/components/ui/badge";
 import { DivisionFormDialog } from "@/components/divisions/division-form-dialog";
 
 export default function DivisionsPage() {
-  const { data: divisions, isLoading } = useDivisions();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const { data: divisions, isLoading } = useDivisions({
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  });
   const deleteMutation = useDeleteDivision();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDivision, setSelectedDivision] = useState<Division | null>(
     null
   );
+  const hasNextPage = (divisions?.length ?? 0) === pageSize;
+  const hasPrevPage = page > 1;
+
+  useEffect(() => {
+    if (!isLoading && (divisions?.length ?? 0) === 0 && page > 1) {
+      setPage((prev) => Math.max(prev - 1, 1));
+    }
+  }, [divisions, isLoading, page]);
 
   function handleEdit(division: Division) {
     setSelectedDivision(division);
@@ -249,6 +262,29 @@ export default function DivisionsPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Halaman {page}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={!hasPrevPage}
+                  >
+                    Sebelumnya
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((prev) => prev + 1)}
+                    disabled={!hasNextPage}
+                  >
+                    Berikutnya
+                  </Button>
+                </div>
               </div>
             </>
           )}

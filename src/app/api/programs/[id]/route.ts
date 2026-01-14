@@ -38,6 +38,16 @@ export async function GET(
       );
     }
 
+    if (
+      session.user.role !== "ADMIN" &&
+      program.divisionId !== session.user.divisionId
+    ) {
+      return NextResponse.json(
+        { error: "Anda tidak memiliki akses ke program ini" },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(program);
   } catch (error) {
     console.error("Error fetching program:", error);
@@ -70,6 +80,53 @@ export async function PUT(
     }
 
     const { id: _, ...data } = parsed.data;
+
+    const existingProgram = await prisma.program.findUnique({
+      where: { id },
+      select: {
+        scheduleType: true,
+        scheduleDays: true,
+        scheduleMonthDays: true,
+        customDates: true,
+      },
+    });
+
+    if (!existingProgram) {
+      return NextResponse.json(
+        { error: "Program tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    const nextScheduleType = data.scheduleType ?? existingProgram.scheduleType;
+    const nextScheduleDays = data.scheduleDays ?? existingProgram.scheduleDays;
+    const nextScheduleMonthDays =
+      data.scheduleMonthDays ?? existingProgram.scheduleMonthDays;
+    const nextCustomDates = data.customDates ?? existingProgram.customDates;
+
+    if (
+      (nextScheduleType === "DAILY" || nextScheduleType === "WEEKLY") &&
+      nextScheduleDays.length === 0
+    ) {
+      return NextResponse.json(
+        { error: "Pilih hari jadwal untuk program ini" },
+        { status: 400 }
+      );
+    }
+
+    if (nextScheduleType === "MONTHLY" && nextScheduleMonthDays.length === 0) {
+      return NextResponse.json(
+        { error: "Pilih tanggal jadwal bulanan untuk program ini" },
+        { status: 400 }
+      );
+    }
+
+    if (nextScheduleType === "CUSTOM" && nextCustomDates.length === 0) {
+      return NextResponse.json(
+        { error: "Pilih tanggal khusus untuk program ini" },
+        { status: 400 }
+      );
+    }
 
     const program = await prisma.program.update({
       where: { id },

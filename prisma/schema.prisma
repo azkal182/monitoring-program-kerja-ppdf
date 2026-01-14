@@ -45,6 +45,9 @@ model User {
     pushSubscriptions PushSubscription[]
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
+
+    @@index([divisionId])
+    @@index([role])
 }
 
 model Division {
@@ -74,6 +77,9 @@ model Program {
     schedules         ScheduleInstance[]
     createdAt         DateTime               @default(now())
     updatedAt         DateTime               @updatedAt
+
+    @@index([divisionId])
+    @@index([isActive])
 }
 
 model ScheduleInstance {
@@ -85,6 +91,7 @@ model ScheduleInstance {
     createdAt DateTime  @default(now())
 
     @@unique([programId, date])
+    @@index([date])
 }
 
 model Session {
@@ -102,6 +109,10 @@ model Session {
     isAutoCreated Boolean          @default(false)
     createdAt     DateTime         @default(now())
     updatedAt     DateTime         @updatedAt
+
+    @@unique([scheduleId])
+    @@index([userId])
+    @@index([status])
 }
 
 model Photo {
@@ -112,6 +123,8 @@ model Photo {
     sessionId   String
     session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
     createdAt   DateTime @default(now())
+
+    @@index([sessionId])
 }
 
 model Document {
@@ -122,6 +135,8 @@ model Document {
     sessionId   String
     session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
     createdAt   DateTime @default(now())
+
+    @@index([sessionId])
 }
 
 model PushSubscription {
@@ -134,4 +149,6 @@ model PushSubscription {
     user           User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
     createdAt      DateTime  @default(now())
     updatedAt      DateTime  @updatedAt
+
+    @@index([userId])
 }

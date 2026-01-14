@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, MoreHorizontal, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,10 +37,23 @@ const roleLabels = {
 };
 
 export default function UsersPage() {
-  const { data: users, isLoading } = useUsers();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const { data: users, isLoading } = useUsers({
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  });
   const deleteMutation = useDeleteUser();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const hasNextPage = (users?.length ?? 0) === pageSize;
+  const hasPrevPage = page > 1;
+
+  useEffect(() => {
+    if (!isLoading && (users?.length ?? 0) === 0 && page > 1) {
+      setPage((prev) => Math.max(prev - 1, 1));
+    }
+  }, [isLoading, users, page]);
 
   function handleEdit(user: User) {
     setSelectedUser(user);
@@ -195,6 +208,29 @@ export default function UsersPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Halaman {page}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={!hasPrevPage}
+                  >
+                    Sebelumnya
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((prev) => prev + 1)}
+                    disabled={!hasNextPage}
+                  >
+                    Berikutnya
+                  </Button>
+                </div>
               </div>
             </>
           )}

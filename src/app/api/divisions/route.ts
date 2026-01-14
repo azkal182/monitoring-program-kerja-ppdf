@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { divisionSchema } from "@/lib/validations/division";
+import { parsePagination } from "@/lib/pagination";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { searchParams } = new URL(request.url);
+    const { take, skip } = parsePagination(searchParams);
 
     const divisions = await prisma.division.findMany({
       include: {
@@ -16,6 +20,8 @@ export async function GET() {
           select: { users: true, programs: true },
         },
       },
+      ...(typeof take === "number" && take > 0 ? { take } : {}),
+      ...(typeof skip === "number" && skip > 0 ? { skip } : {}),
       orderBy: { name: "asc" },
     });
 

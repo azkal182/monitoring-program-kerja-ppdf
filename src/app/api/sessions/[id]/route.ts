@@ -36,6 +36,19 @@ export async function GET(
       );
     }
 
+    const isAdmin = authSession.user.role === "ADMIN";
+    const isKoordinator = authSession.user.role === "KOORDINATOR";
+    const isOwner = session.userId === authSession.user.id;
+    const sameDivision =
+      session.schedule.program.divisionId === authSession.user.divisionId;
+
+    if (!isAdmin && !(isKoordinator && sameDivision) && !isOwner) {
+      return NextResponse.json(
+        { error: "Anda tidak memiliki akses ke sesi ini" },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(session);
   } catch (error) {
     console.error("Error fetching session:", error);
@@ -70,7 +83,10 @@ export async function PUT(
     // Check if session exists and belongs to user
     const existingSession = await prisma.session.findUnique({
       where: { id },
-      include: { schedule: { include: { program: true } } },
+      include: {
+        schedule: { include: { program: true } },
+        _count: { select: { photos: true, documents: true } },
+      },
     });
 
     if (!existingSession) {
@@ -104,6 +120,24 @@ export async function PUT(
     ) {
       return NextResponse.json(
         { error: "Catatan kendala wajib diisi" },
+        { status: 400 }
+      );
+    }
+
+    const requirementType = existingSession.schedule.program.requirementType;
+    const minUploads = existingSession.schedule.program.minUploads;
+    const proofCount =
+      requirementType === "PHOTO"
+        ? existingSession._count.photos
+        : existingSession._count.documents;
+
+    if (proofCount < minUploads) {
+      return NextResponse.json(
+        {
+          error: `Minimal ${minUploads} ${
+            requirementType === "PHOTO" ? "foto" : "dokumen"
+          } harus diunggah`,
+        },
         { status: 400 }
       );
     }

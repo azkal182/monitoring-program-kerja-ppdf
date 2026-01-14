@@ -27,12 +27,18 @@ export interface UserInput {
 interface FetchUsersParams {
   divisionId?: string;
   role?: Role;
+  limit?: number;
+  offset?: number;
 }
 
 async function fetchUsers(params?: FetchUsersParams): Promise<User[]> {
   const searchParams = new URLSearchParams();
   if (params?.divisionId) searchParams.set("divisionId", params.divisionId);
   if (params?.role) searchParams.set("role", params.role);
+  if (typeof params?.limit === "number")
+    searchParams.set("limit", String(params.limit));
+  if (typeof params?.offset === "number")
+    searchParams.set("offset", String(params.offset));
 
   const res = await fetch(`/api/users?${searchParams}`);
   if (!res.ok) throw new Error("Failed to fetch users");

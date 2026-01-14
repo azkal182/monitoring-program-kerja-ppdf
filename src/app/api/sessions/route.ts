@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { sessionStartSchema } from "@/lib/validations/session";
+import { parsePagination } from "@/lib/pagination";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,11 +15,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const scheduleId = searchParams.get("scheduleId");
     const userId = searchParams.get("userId");
+    const { take, skip } = parsePagination(searchParams);
+    const isAdmin = session.user.role === "ADMIN";
+
+    if (!isAdmin && userId && userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Anda tidak memiliki akses ke data ini" },
+        { status: 403 }
+      );
+    }
+
+    const scopedUserId = isAdmin ? userId ?? undefined : session.user.id;
 
     const sessions = await prisma.session.findMany({
       where: {
         ...(scheduleId && { scheduleId }),
-        ...(userId && { userId }),
+        ...(scopedUserId && { userId: scopedUserId }),
       },
       include: {
         user: { select: { id: true, name: true, username: true } },
@@ -28,6 +41,8 @@ export async function GET(request: NextRequest) {
         },
         photos: true,
       },
+      ...(typeof take === "number" && take > 0 ? { take } : {}),
+      ...(typeof skip === "number" && skip > 0 ? { skip } : {}),
       orderBy: { createdAt: "desc" },
     });
 
@@ -73,18 +88,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already has a session for this schedule
+    if (
+      session.user.role !== "ADMIN" &&
+      scheduleInstance.program.divisionId !== session.user.divisionId
+    ) {
+      return NextResponse.json(
+        { error: "Anda tidak memiliki akses ke jadwal ini" },
+        { status: 403 }
+      );
+    }
+
+    // Only allow one session per schedule
     const existingSession = await prisma.session.findFirst({
-      where: {
-        scheduleId,
-        userId: session.user.id,
-      },
+      where: { scheduleId },
+      include: { user: { select: { id: true, name: true } } },
     });
 
     if (existingSession) {
       return NextResponse.json(
         {
-          error: "Anda sudah memulai sesi untuk jadwal ini",
+          error: "Sesi untuk jadwal ini sudah dibuat",
           session: existingSession,
         },
         { status: 400 }
@@ -92,24 +115,49 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new session
-    const newSession = await prisma.session.create({
-      data: {
-        scheduleId,
-        userId: session.user.id,
-        status: "DRAFT",
-      },
-      include: {
-        user: { select: { id: true, name: true } },
-        schedule: {
-          include: {
-            program: true,
-          },
+    try {
+      const newSession = await prisma.session.create({
+        data: {
+          scheduleId,
+          userId: session.user.id,
+          status: "DRAFT",
         },
-        photos: true,
-      },
-    });
+        include: {
+          user: { select: { id: true, name: true } },
+          schedule: {
+            include: {
+              program: true,
+            },
+          },
+          photos: true,
+        },
+      });
 
-    return NextResponse.json(newSession, { status: 201 });
+      return NextResponse.json(newSession, { status: 201 });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existing = await prisma.session.findFirst({
+          where: { scheduleId },
+          include: {
+            user: { select: { id: true, name: true } },
+            schedule: { include: { program: true } },
+            photos: true,
+          },
+        });
+
+        if (existing) {
+          return NextResponse.json(
+            { error: "Sesi untuk jadwal ini sudah dibuat", session: existing },
+            { status: 400 }
+          );
+        }
+      }
+
+      throw error;
+    }
   } catch (error) {
     console.error("Error creating session:", error);
     return NextResponse.json({ error: "Gagal memulai sesi" }, { status: 500 });
