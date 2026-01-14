@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getJakartaDateKey, startOfJakartaDayUtc } from "@/lib/timezone";
 
-// This endpoint should be called by a cron job at night (e.g., 23:59)
-// In Vercel, set up cron: 59 23 * * * to call this endpoint
+// This endpoint should be called daily at 23:59 Asia/Jakarta.
+// Note: Vercel cron uses UTC, so 23:59 WIB is 16:59 UTC.
 export async function GET() {
   try {
-    const today = new Date();
-    const dateOnly = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
+    const dateOnly = startOfJakartaDayUtc();
+    const jakartaDateKey = getJakartaDateKey(dateOnly);
 
     // Find all schedules for today without any submitted session
     const schedulesWithoutSession = await prisma.scheduleInstance.findMany({
@@ -78,7 +75,7 @@ export async function GET() {
       success: true,
       message: `Marked ${failedCount} programs as not executed`,
       count: failedCount,
-      date: dateOnly.toISOString().split("T")[0],
+      date: jakartaDateKey,
     });
   } catch (error) {
     console.error("Error running auto-fail:", error);

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { generateSchedulesForDate } from "@/lib/schedule-generator";
 
-// This endpoint should be called by a cron job daily
-// In Vercel, set up cron: @daily to call this endpoint
+// This endpoint should be called daily at 00:00 Asia/Jakarta.
+// Note: Vercel cron uses UTC, so 00:00 WIB is 17:00 UTC (previous day).
 export async function GET() {
   try {
     const today = new Date();
