@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { programUpdateSchema } from "@/lib/validations/program";
+import { startOfJakartaDayUtc } from "@/lib/timezone";
 
 export async function GET(
   request: NextRequest,
@@ -128,9 +129,16 @@ export async function PUT(
       );
     }
 
+    const normalizedData = {
+      ...data,
+      ...(Array.isArray(data.customDates)
+        ? { customDates: data.customDates.map((date) => startOfJakartaDayUtc(date)) }
+        : {}),
+    };
+
     const program = await prisma.program.update({
       where: { id },
-      data,
+      data: normalizedData,
       include: {
         division: { select: { id: true, name: true } },
       },

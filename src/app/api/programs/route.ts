@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { programSchema } from "@/lib/validations/program";
+import { startOfJakartaDayUtc } from "@/lib/timezone";
 import { parsePagination } from "@/lib/pagination";
 
 export async function GET(request: NextRequest) {
@@ -63,7 +64,12 @@ export async function POST(request: NextRequest) {
     }
 
     const program = await prisma.program.create({
-      data: parsed.data,
+      data: {
+        ...parsed.data,
+        customDates: parsed.data.customDates.map((date) =>
+          startOfJakartaDayUtc(date)
+        ),
+      },
       include: {
         division: { select: { id: true, name: true } },
       },
