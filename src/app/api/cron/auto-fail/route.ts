@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getJakartaDateKey, startOfJakartaDayUtc } from "@/lib/timezone";
 import { assertCronAuth } from "@/lib/cron";
+import { notifyCronSuccess, notifyCronFailure } from "@/lib/telegram";
 
 // This endpoint should be called daily at 23:30 Asia/Jakarta.
 // Note: Vercel cron uses UTC, so 23:30 WIB is 16:30 UTC.
@@ -161,6 +162,14 @@ export async function GET(request: NextRequest) {
       failedCount += result.count;
     }
 
+    // Send Telegram notification
+    await notifyCronSuccess("Auto-fail Programs", {
+      Date: jakartaDateKey,
+      "Programs Failed": failedCount,
+      "Draft Updated": schedulesWithDraft.size,
+      "New Sessions": createData.length,
+    });
+
     return NextResponse.json({
       success: true,
       message: `Marked ${failedCount} programs as not executed`,
@@ -169,6 +178,16 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error running auto-fail:", error);
+
+    // Send failure notification
+    await notifyCronFailure(
+      "Auto-fail Programs",
+      error instanceof Error ? error.message : "Unknown error",
+      {
+        "Error Type": error instanceof Error ? error.name : "Unknown",
+      },
+    );
+
     return NextResponse.json(
       { error: "Failed to run auto-fail mechanism" },
       { status: 500 },

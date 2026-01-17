@@ -3,12 +3,26 @@ import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import {
+  compressImage,
+  isImageBuffer,
+  type CompressImageOptions,
+} from "./image-compression";
 
 interface UploadOptions {
   buffer: Buffer;
   contentType: string;
   directory?: string;
   fileName?: string;
+  /**
+   * Enable image compression (default: true for images)
+   * Set to false to disable compression
+   */
+  compress?: boolean;
+  /**
+   * Compression settings (optional, uses defaults if not provided)
+   */
+  compressionOptions?: CompressImageOptions;
 }
 
 export interface UploadResult {
@@ -24,7 +38,9 @@ interface StorageAdapter {
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseBucket = process.env.SUPABASE_STORAGE_BUCKET || "monitoring";
-const storageDriver = process.env.STORAGE_DRIVER || (supabaseUrl && supabaseServiceRoleKey ? "supabase" : "local");
+const storageDriver =
+  process.env.STORAGE_DRIVER ||
+  (supabaseUrl && supabaseServiceRoleKey ? "supabase" : "local");
 
 class LocalStorageAdapter implements StorageAdapter {
   private baseDir: string;
@@ -41,7 +57,12 @@ class LocalStorageAdapter implements StorageAdapter {
     }
   }
 
-  async upload({ buffer, contentType, directory, fileName }: UploadOptions): Promise<UploadResult> {
+  async upload({
+    buffer,
+    contentType,
+    directory,
+    fileName,
+  }: UploadOptions): Promise<UploadResult> {
     const safeDir = directory?.replace(/\\/g, "/") || "";
     const finalDir = path.join(this.baseDir, safeDir);
     await this.ensureDir(finalDir);
@@ -51,7 +72,9 @@ class LocalStorageAdapter implements StorageAdapter {
     const filePath = path.join(finalDir, safeName);
     await writeFile(filePath, buffer);
 
-    const relativePath = path.relative(this.baseDir, filePath).replace(/\\/g, "/");
+    const relativePath = path
+      .relative(this.baseDir, filePath)
+      .replace(/\\/g, "/");
     const publicPath = path.join("/uploads", relativePath).replace(/\\/g, "/");
 
     return {
@@ -81,7 +104,12 @@ class SupabaseStorageAdapter implements StorageAdapter {
     this.bucket = bucket;
   }
 
-  async upload({ buffer, contentType, directory, fileName }: UploadOptions): Promise<UploadResult> {
+  async upload({
+    buffer,
+    contentType,
+    directory,
+    fileName,
+  }: UploadOptions): Promise<UploadResult> {
     const extension = getExtensionFromContentType(contentType);
     const safeName = createSafeFileName(fileName, extension);
     const key = path.posix.join(directory || "", safeName);
@@ -116,7 +144,9 @@ class SupabaseStorageAdapter implements StorageAdapter {
 function createSafeFileName(fileName: string | undefined, extension: string) {
   if (fileName) {
     const hasExt = path.extname(fileName);
-    return fileName.replace(/[^a-zA-Z0-9_.-]/g, "_") + (hasExt ? "" : extension);
+    return (
+      fileName.replace(/[^a-zA-Z0-9_.-]/g, "_") + (hasExt ? "" : extension)
+    );
   }
   return `${Date.now()}-${randomUUID()}${extension}`;
 }
@@ -129,7 +159,8 @@ function getExtensionFromContentType(contentType: string) {
     "image/webp": ".webp",
     "application/pdf": ".pdf",
     "application/msword": ".doc",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      ".docx",
   };
   return map[contentType] || "";
 }
@@ -141,7 +172,9 @@ function resolveAdapter(): StorageAdapter {
 
   if (storageDriver === "supabase") {
     if (!supabaseUrl || !supabaseServiceRoleKey) {
-      throw new Error("Supabase credentials are required for supabase storage driver.");
+      throw new Error(
+        "Supabase credentials are required for supabase storage driver.",
+      );
     }
     storageAdapter = new SupabaseStorageAdapter(supabaseBucket);
   } else {
@@ -151,8 +184,36 @@ function resolveAdapter(): StorageAdapter {
   return storageAdapter;
 }
 
-export async function uploadFile(options: UploadOptions): Promise<UploadResult> {
+export async function uploadFile(
+  options: UploadOptions,
+): Promise<UploadResult> {
   const adapter = resolveAdapter();
+
+  // Auto-compress images unless explicitly disabled
+  const shouldCompress =
+    options.compress !== false &&
+    (options.contentType.startsWith("image/") || isImageBuffer(options.buffer));
+
+  if (shouldCompress) {
+    try {
+      const compressed = await compressImage(
+        options.buffer,
+        options.compressionOptions || { quality: 80 },
+      );
+
+      // Use compressed buffer and update content type if format changed
+      return adapter.upload({
+        ...options,
+        buffer: compressed.buffer,
+        contentType: compressed.contentType,
+      });
+    } catch (error) {
+      console.error("Image compression failed, uploading original:", error);
+      // Fallback to original if compression fails
+      return adapter.upload(options);
+    }
+  }
+
   return adapter.upload(options);
 }
 

@@ -1,27 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { formatDate, getJakartaDayName } from "@/lib/utils";
 import { getJakartaDateKey } from "@/lib/timezone";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Calendar,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-} from "lucide-react";
+import { Calendar } from "lucide-react";
 import { useDivisions } from "@/hooks/use-divisions";
-import { useSchedules, type ScheduleSummary } from "@/hooks/use-schedules";
+import { useSchedules } from "@/hooks/use-schedules";
 import {
   Select,
   SelectContent,
@@ -30,15 +19,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ScheduleTable } from "@/components/dashboard/schedule-table";
+import { ScheduleCards } from "@/components/dashboard/schedule-cards";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function SchedulesPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const isMobile = useIsMobile();
+
   const [selectedDate, setSelectedDate] = useState(() =>
     getJakartaDateKey(new Date())
   );
   const [selectedDivisionId, setSelectedDivisionId] = useState("all");
+
   const { data: schedules, isLoading } = useSchedules(
     selectedDate,
     isAdmin && selectedDivisionId !== "all" ? selectedDivisionId : undefined
@@ -52,25 +46,6 @@ export default function SchedulesPage() {
       (schedule) => schedule.program.division.id === selectedDivisionId
     );
   }, [schedules, selectedDivisionId, isAdmin]);
-
-  function getStatusBadge(sessions: ScheduleSummary["sessions"]) {
-    if (sessions.length === 0) {
-      return <Badge variant="outline">Belum dimulai</Badge>;
-    }
-    const session = sessions[0];
-    switch (session.status) {
-      case "DRAFT":
-        return <Badge variant="secondary">Sedang berjalan</Badge>;
-      case "COMPLETED":
-        return <Badge className="bg-green-600">Selesai</Badge>;
-      case "COMPLETED_WITH_ISSUE":
-        return <Badge className="bg-orange-500">Kendala</Badge>;
-      case "NOT_EXECUTED":
-        return <Badge variant="destructive">Tidak terlaksana</Badge>;
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -129,66 +104,13 @@ export default function SchedulesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {filteredSchedules.map((schedule) => (
-            <Card key={schedule.id}>
-              <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                    schedule.sessions.length === 0
-                      ? "bg-slate-100"
-                      : schedule.sessions[0].status === "COMPLETED"
-                      ? "bg-green-100"
-                      : schedule.sessions[0].status === "COMPLETED_WITH_ISSUE"
-                      ? "bg-orange-100"
-                      : schedule.sessions[0].status === "NOT_EXECUTED"
-                      ? "bg-red-100"
-                      : "bg-amber-100"
-                  }`}
-                >
-                  {schedule.sessions.length === 0 ? (
-                    <Clock className="h-5 w-5 text-slate-600" />
-                  ) : schedule.sessions[0].status === "COMPLETED" ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  ) : schedule.sessions[0].status === "COMPLETED_WITH_ISSUE" ? (
-                    <AlertCircle className="h-5 w-5 text-orange-600" />
-                  ) : schedule.sessions[0].status === "NOT_EXECUTED" ? (
-                    <XCircle className="h-5 w-5 text-red-600" />
-                  ) : (
-                    <Clock className="h-5 w-5 text-amber-600" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium">{schedule.program.name}</div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {schedule.program.division.name}
-                    </Badge>
-                    <span>{schedule.program.scheduleTime || "--:--"}</span>
-                    {schedule.sessions[0]?.user && (
-                      <span>• {schedule.sessions[0].user.name}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {getStatusBadge(schedule.sessions)}
-                  {schedule.sessions[0] &&
-                    ["COMPLETED", "COMPLETED_WITH_ISSUE"].includes(
-                      schedule.sessions[0].status
-                    ) && (
-                      <Button size="sm" variant="outline" asChild>
-                        <Link
-                          href={`/dashboard/sessions/${schedule.sessions[0].id}`}
-                        >
-                          Lihat Bukti
-                        </Link>
-                      </Button>
-                    )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <>
+          {/* Desktop: Table View */}
+          {!isMobile && <ScheduleTable schedules={filteredSchedules} />}
+
+          {/* Mobile: Card View */}
+          {isMobile && <ScheduleCards schedules={filteredSchedules} />}
+        </>
       )}
     </div>
   );

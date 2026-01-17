@@ -5,6 +5,8 @@ import prisma from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 import authConfig from "./auth.config";
 
+import "next-auth/jwt";
+
 declare module "next-auth" {
   interface User {
     id: string;
@@ -26,7 +28,7 @@ declare module "next-auth" {
   }
 }
 
-declare module "@auth/core/jwt" {
+declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     username: string;
