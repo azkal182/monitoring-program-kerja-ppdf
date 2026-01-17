@@ -3,14 +3,31 @@ import prisma from "@/lib/prisma";
 import { getJakartaDateKey, startOfJakartaDayUtc } from "@/lib/timezone";
 import { assertCronAuth } from "@/lib/cron";
 
-// This endpoint should be called daily at 23:59 Asia/Jakarta.
-// Note: Vercel cron uses UTC, so 23:59 WIB is 16:59 UTC.
+// This endpoint should be called daily at 23:30 Asia/Jakarta.
+// Note: Vercel cron uses UTC, so 23:30 WIB is 16:30 UTC.
+// Optional query param: ?date=YYYY-MM-DD to run for a specific date.
 export async function GET(request: NextRequest) {
   try {
     const unauthorized = assertCronAuth(request);
     if (unauthorized) return unauthorized;
 
-    const dateOnly = startOfJakartaDayUtc();
+    const { searchParams } = new URL(request.url);
+    const customDate = searchParams.get("date");
+
+    let dateOnly: Date;
+    if (customDate) {
+      // Parse custom date (expected format: YYYY-MM-DD)
+      const parsed = new Date(customDate);
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid date format. Use YYYY-MM-DD" },
+          { status: 400 },
+        );
+      }
+      dateOnly = startOfJakartaDayUtc(parsed);
+    } else {
+      dateOnly = startOfJakartaDayUtc();
+    }
     const jakartaDateKey = getJakartaDateKey(dateOnly);
 
     // Find all schedules for today without any submitted session
@@ -40,11 +57,13 @@ export async function GET(request: NextRequest) {
     const schedulesWithDraft = new Set<string>();
 
     const schedulesNeedingCreate = schedulesWithoutSession.filter(
-      (schedule) => schedule.sessions.length === 0
+      (schedule) => schedule.sessions.length === 0,
     );
 
     const divisionIds = Array.from(
-      new Set(schedulesNeedingCreate.map((schedule) => schedule.program.divisionId))
+      new Set(
+        schedulesNeedingCreate.map((schedule) => schedule.program.divisionId),
+      ),
     );
 
     const coordinators = await prisma.user.findMany({
@@ -84,12 +103,14 @@ export async function GET(request: NextRequest) {
     }[] = [];
 
     for (const schedule of schedulesWithoutSession) {
-      if (schedule.sessions.some((session) => session.status === "NOT_EXECUTED")) {
+      if (
+        schedule.sessions.some((session) => session.status === "NOT_EXECUTED")
+      ) {
         continue;
       }
 
       const draftSessions = schedule.sessions.filter(
-        (session) => session.status === "DRAFT"
+        (session) => session.status === "DRAFT",
       );
       if (draftSessions.length > 0) {
         for (const session of draftSessions) {
@@ -100,7 +121,9 @@ export async function GET(request: NextRequest) {
       }
 
       if (schedule.sessions.length === 0) {
-        const assignedUserId = assignedByDivision.get(schedule.program.divisionId);
+        const assignedUserId = assignedByDivision.get(
+          schedule.program.divisionId,
+        );
         if (!assignedUserId) continue;
 
         createData.push({
@@ -116,7 +139,10 @@ export async function GET(request: NextRequest) {
 
     if (draftSessionIds.length > 0) {
       await prisma.session.updateMany({
-        where: { id: { in: draftSessionIds } },
+        where: {
+          id: { in: draftSessionIds },
+          status: "DRAFT", // Only update if still DRAFT (prevent overwriting user submissions)
+        },
         data: {
           status: "NOT_EXECUTED",
           isAutoCreated: true,
@@ -128,7 +154,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (createData.length > 0) {
-      const result = await prisma.session.createMany({ data: createData });
+      const result = await prisma.session.createMany({
+        data: createData,
+        skipDuplicates: true, // Skip if already exists (idempotency safety)
+      });
       failedCount += result.count;
     }
 
@@ -142,7 +171,7 @@ export async function GET(request: NextRequest) {
     console.error("Error running auto-fail:", error);
     return NextResponse.json(
       { error: "Failed to run auto-fail mechanism" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

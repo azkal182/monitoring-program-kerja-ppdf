@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/generate-schedules",
-      "schedule": "0 5 * * *"
+      "schedule": "30 17 * * *"
     },
     {
       "path": "/api/cron/auto-fail",
-      "schedule": "59 16 * * *"
+      "schedule": "30 16 * * *"
     }
   ]
 }
