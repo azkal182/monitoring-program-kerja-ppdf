@@ -21,11 +21,11 @@ export async function GET(request: NextRequest) {
     if (!isAdmin && userId && userId !== session.user.id) {
       return NextResponse.json(
         { error: "Anda tidak memiliki akses ke data ini" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    const scopedUserId = isAdmin ? userId ?? undefined : session.user.id;
+    const scopedUserId = isAdmin ? (userId ?? undefined) : session.user.id;
 
     const sessions = await prisma.session.findMany({
       where: {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching sessions:", error);
     return NextResponse.json(
       { error: "Gagal mengambil data sesi" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     if (!scheduleInstance) {
       return NextResponse.json(
         { error: "Jadwal tidak ditemukan" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -94,8 +94,49 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Anda tidak memiliki akses ke jadwal ini" },
-        { status: 403 }
+        { status: 403 },
       );
+    }
+
+    // Validate schedule time (allow starting 30 minutes before)
+    const scheduleTime = scheduleInstance.program.scheduleTime;
+    if (scheduleTime) {
+      const [hours, minutes] = scheduleTime.split(":").map(Number);
+
+      // Get current time in Jakarta timezone
+      const now = new Date();
+      const jakartaTime = new Date(
+        now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }),
+      );
+
+      // Create scheduled time for today in Jakarta
+      const scheduledDateTime = new Date(jakartaTime);
+      scheduledDateTime.setHours(hours, minutes, 0, 0);
+
+      // Calculate time difference in minutes
+      const diffMinutes =
+        (scheduledDateTime.getTime() - jakartaTime.getTime()) / 60000;
+
+      // Only allow if current time is within 30 minutes before schedule time
+      // diffMinutes > 30 means too early (more than 30 min before)
+      if (diffMinutes > 30) {
+        const earliestTime = new Date(scheduledDateTime);
+        earliestTime.setMinutes(earliestTime.getMinutes() - 30);
+        const earliestTimeStr = earliestTime.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Asia/Jakarta",
+        });
+
+        return NextResponse.json(
+          {
+            error: `Sesi hanya bisa dimulai mulai jam ${earliestTimeStr} (30 menit sebelum jadwal ${scheduleTime})`,
+            scheduleTime,
+            earliestTime: earliestTimeStr,
+          },
+          { status: 400 },
+        );
+      }
     }
 
     // Only allow one session per schedule
@@ -110,7 +151,7 @@ export async function POST(request: NextRequest) {
           error: "Sesi untuk jadwal ini sudah dibuat",
           session: existingSession,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -151,7 +192,7 @@ export async function POST(request: NextRequest) {
         if (existing) {
           return NextResponse.json(
             { error: "Sesi untuk jadwal ini sudah dibuat", session: existing },
-            { status: 400 }
+            { status: 400 },
           );
         }
       }
