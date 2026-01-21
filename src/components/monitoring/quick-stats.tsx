@@ -79,7 +79,7 @@ export function QuickStats({ stats }: QuickStatsProps) {
           iconColor="text-red-600"
         />
         <StatCard
-          title="Pending"
+          title="Belum Terlaksana"
           value={stats.pending}
           icon={Clock}
           color="bg-slate-100"

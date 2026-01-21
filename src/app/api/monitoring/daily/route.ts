@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { unstable_cache } from "next/cache";
-import {
-  getJakartaDateKey,
-  startOfJakartaDayUtc,
-  endOfJakartaDayUtc,
-} from "@/lib/timezone";
+import { getJakartaDateKey, startOfJakartaDayUtc } from "@/lib/timezone";
 
 export interface DailyMonitoringStats {
   date: string;
@@ -243,7 +239,6 @@ export async function GET(request: NextRequest) {
     }
 
     const dayStart = startOfJakartaDayUtc(targetDate);
-    const dayEnd = endOfJakartaDayUtc(targetDate);
 
     const divisionId =
       session.user.role === "ADMIN" ? null : session.user.divisionId!;

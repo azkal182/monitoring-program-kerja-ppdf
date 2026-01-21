@@ -27,25 +27,60 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+type NavigationItem = {
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  adminOnly?: boolean;
+  badge?: string;
+};
+
+type NavigationGroup = {
+  title: string;
+  items: NavigationItem[];
+};
+
+const navigationGroups: NavigationGroup[] = [
   {
-    name: "Departemen",
-    href: "/dashboard/divisions",
-    icon: Building2,
-    adminOnly: true,
+    title: "Utama",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Monitoring V2", href: "/dashboard/monitoring-v2", icon: BarChart3, badge: "New" },
+    ],
   },
-  { name: "Pengguna", href: "/dashboard/users", icon: Users, adminOnly: true },
-  { name: "Program Kerja", href: "/dashboard/programs", icon: ClipboardList },
-  { name: "Jadwal", href: "/dashboard/schedules", icon: Calendar },
-  { name: "Kalender", href: "/dashboard/calendar", icon: Calendar },
   {
-    name: "Notifikasi",
-    href: "/dashboard/push-notifications",
-    icon: Bell,
-    adminOnly: true,
+    title: "Manajemen",
+    items: [
+      {
+        name: "Departemen",
+        href: "/dashboard/divisions",
+        icon: Building2,
+        adminOnly: true,
+      },
+      { name: "Pengguna", href: "/dashboard/users", icon: Users, adminOnly: true },
+      { name: "Program Kerja", href: "/dashboard/programs", icon: ClipboardList },
+    ],
   },
-  { name: "Monitoring", href: "/dashboard/monitoring", icon: BarChart3 },
+  {
+    title: "Operasional",
+    items: [
+      { name: "Jadwal", href: "/dashboard/schedules", icon: Calendar },
+      { name: "Kalender", href: "/dashboard/calendar", icon: Calendar },
+      {
+        name: "Notifikasi",
+        href: "/dashboard/push-notifications",
+        icon: Bell,
+        adminOnly: true,
+      },
+    ],
+  },
+  {
+    title: "Monitoring",
+    items: [
+
+      { name: "Monitoring Lama", href: "/dashboard/monitoring", icon: BarChart3 },
+    ],
+  },
 ];
 
 function NavItems({
@@ -60,41 +95,61 @@ function NavItems({
   const isAdmin = session?.user?.role === "ADMIN";
 
   return (
-    <nav className={cn("space-y-1", className)}>
-      {navigation
-        .filter((item) => !item.adminOnly || isAdmin)
-        .map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/dashboard" &&
-              pathname.startsWith(item.href + "/")) ||
-            (item.href === "/dashboard" &&
-              (pathname === "/dashboard" || pathname === "/dashboard/"));
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={onClick}
-              className={cn(
-                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/40"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full transition-all",
-                  isActive
-                    ? "bg-primary opacity-100"
-                    : "bg-transparent opacity-0 group-hover:opacity-40 group-hover:bg-muted-foreground"
-                )}
-              />
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </Link>
-          );
-        })}
+    <nav className={cn("space-y-6", className)}>
+      {navigationGroups.map((group) => {
+        const visibleItems = group.items.filter(
+          (item) => !item.adminOnly || isAdmin
+        );
+
+        if (visibleItems.length === 0) return null;
+
+        return (
+          <div key={group.title} className="space-y-2">
+            <h3 className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {group.title}
+            </h3>
+            <div className="space-y-1">
+              {visibleItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" &&
+                    pathname.startsWith(item.href + "/")) ||
+                  (item.href === "/dashboard" &&
+                    (pathname === "/dashboard" || pathname === "/dashboard/"));
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={onClick}
+                    className={cn(
+                      "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/40"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full transition-all",
+                        isActive
+                          ? "bg-primary opacity-100"
+                          : "bg-transparent opacity-0 group-hover:opacity-40 group-hover:bg-muted-foreground"
+                      )}
+                    />
+                    <item.icon className="h-5 w-5" />
+                    <span className="flex-1">{item.name}</span>
+                    {item.badge && (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </nav>
   );
 }

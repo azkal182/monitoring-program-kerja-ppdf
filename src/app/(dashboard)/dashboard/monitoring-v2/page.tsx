@@ -121,8 +121,9 @@ export default function MonitoringV2Page() {
               {/* Division Breakdown */}
               <div>
                 <h2 className="text-lg font-semibold mb-4">Breakdown per Divisi</h2>
-                {"byDivision" in stats && (
-                  <DivisionAccordion divisions={stats.byDivision} />
+                {"byDivision" in stats && stats.byDivision.length > 0 && "programs" in stats.byDivision[0] && (
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  <DivisionAccordion divisions={stats.byDivision as any} />
                 )}
               </div>
             </TabsContent>
@@ -194,7 +195,7 @@ export default function MonitoringV2Page() {
                                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100">
                                     <span className="text-slate-600 font-semibold text-xs">{division.pending}</span>
                                   </div>
-                                  <span className="text-muted-foreground">Pending</span>
+                                  <span className="text-muted-foreground">Belum Terlaksana</span>
                                 </div>
                               )}
                             </div>
