@@ -45,10 +45,20 @@ export async function GET(request: NextRequest) {
       },
       include: {
         program: {
-          select: { divisionId: true },
+          select: {
+            divisionId: true,
+            requirementType: true,
+            minUploads: true,
+          },
         },
         sessions: {
-          select: { id: true, status: true, userId: true },
+          select: {
+            id: true,
+            status: true,
+            userId: true,
+            photos: { select: { id: true } },
+            documents: { select: { id: true } },
+          },
         },
       },
     });
@@ -103,6 +113,10 @@ export async function GET(request: NextRequest) {
       submittedAt: Date;
     }[] = [];
 
+    // Separate DRAFT sessions by whether they meet requirements
+    const draftSessionsToComplete: string[] = [];
+    const draftSessionsToFail: string[] = [];
+
     for (const schedule of schedulesWithoutSession) {
       if (
         schedule.sessions.some((session) => session.status === "NOT_EXECUTED")
@@ -113,8 +127,28 @@ export async function GET(request: NextRequest) {
       const draftSessions = schedule.sessions.filter(
         (session) => session.status === "DRAFT",
       );
+
       if (draftSessions.length > 0) {
         for (const session of draftSessions) {
+          // Check if session meets upload requirements
+          const program = schedule.program;
+          const requirementType = program.requirementType;
+          const minUploads = program.minUploads;
+
+          let uploadCount = 0;
+          if (requirementType === "PHOTO") {
+            uploadCount = session.photos?.length || 0;
+          } else if (requirementType === "DOCUMENT") {
+            uploadCount = session.documents?.length || 0;
+          }
+
+          // If requirements are met, mark for completion
+          if (uploadCount >= minUploads) {
+            draftSessionsToComplete.push(session.id);
+          } else {
+            draftSessionsToFail.push(session.id);
+          }
+
           draftSessionIds.push(session.id);
         }
         schedulesWithDraft.add(schedule.id);
@@ -138,10 +172,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (draftSessionIds.length > 0) {
+    // Auto-complete DRAFT sessions that meet requirements
+    let completedCount = 0;
+    if (draftSessionsToComplete.length > 0) {
       await prisma.session.updateMany({
         where: {
-          id: { in: draftSessionIds },
+          id: { in: draftSessionsToComplete },
+          status: "DRAFT", // Only update if still DRAFT
+        },
+        data: {
+          status: "COMPLETED",
+          isAutoCreated: true,
+          submittedAt: new Date(),
+        },
+      });
+      completedCount = draftSessionsToComplete.length;
+    }
+
+    // Mark DRAFT sessions that don't meet requirements as NOT_EXECUTED
+    if (draftSessionsToFail.length > 0) {
+      await prisma.session.updateMany({
+        where: {
+          id: { in: draftSessionsToFail },
           status: "DRAFT", // Only update if still DRAFT (prevent overwriting user submissions)
         },
         data: {
@@ -151,7 +203,7 @@ export async function GET(request: NextRequest) {
           submittedAt: new Date(),
         },
       });
-      failedCount += schedulesWithDraft.size;
+      failedCount += draftSessionsToFail.length;
     }
 
     if (createData.length > 0) {
