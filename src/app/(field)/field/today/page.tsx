@@ -165,7 +165,24 @@ export default function FieldTodayPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {schedules?.map((schedule) => {
+          {schedules
+            ?.sort((a, b) => {
+              const statusA = getStatusInfo(a, authSession?.user?.id).status;
+              const statusB = getStatusInfo(b, authSession?.user?.id).status;
+
+              // Priority order: pending (0), draft (1), failed (2), issue (3), completed (4), locked (5)
+              const priority: Record<string, number> = {
+                pending: 0,
+                draft: 1,
+                failed: 2,
+                issue: 3,
+                completed: 4,
+                locked: 5,
+              };
+
+              return (priority[statusA] || 99) - (priority[statusB] || 99);
+            })
+            .map((schedule) => {
             const statusInfo = getStatusInfo(schedule, authSession?.user?.id);
             const StatusIcon = statusInfo.icon;
 
@@ -179,82 +196,97 @@ export default function FieldTodayPage() {
                     {/* Status Indicator */}
                     <div className={`w-2 ${statusInfo.color.split(" ")[0]}`} />
 
-                    <div className="flex flex-1 items-center gap-4 p-4">
-                      {/* Icon */}
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-full ${statusInfo.color}`}
-                      >
-                        <StatusIcon className="h-5 w-5" />
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium truncate">
-                          {schedule.program.name}
-                        </h3>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            {schedule.program.scheduleTime || "--:--"}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {schedule.program.requirementType === "PHOTO" ? (
-                              <Camera className="h-3.5 w-3.5" />
-                            ) : (
-                              <FileText className="h-3.5 w-3.5" />
-                            )}
-                            Min. {schedule.program.minUploads}{" "}
-                            {schedule.program.requirementType === "PHOTO"
-                              ? "foto"
-                              : "dokumen"}
-                          </span>
-                          {statusInfo.ownerName && (
-                            <span>• {statusInfo.ownerName}</span>
-                          )}
-                        </div>
-                        <Badge variant="outline" className="mt-1 text-xs">
-                          {statusInfo.label}
-                        </Badge>
-                      </div>
-
-                      {/* Action */}
-                      {statusInfo.status === "pending" && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStart(schedule.id)}
-                          disabled={startMutation.isPending}
+                    <div className="flex flex-1 flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4">
+                      {/* Icon + Content */}
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        {/* Icon */}
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${statusInfo.color}`}
                         >
-                          <Play className="h-4 w-4 mr-1" />
-                          Mulai
-                        </Button>
-                      )}
-                      {statusInfo.status === "draft" &&
-                        statusInfo.sessionId && (
+                          <StatusIcon className="h-5 w-5" />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium break-words">
+                            {schedule.program.name}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5 shrink-0" />
+                              <span>{schedule.program.scheduleTime || "--:--"}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              {schedule.program.requirementType === "PHOTO" ? (
+                                <Camera className="h-3.5 w-3.5 shrink-0" />
+                              ) : (
+                                <FileText className="h-3.5 w-3.5 shrink-0" />
+                              )}
+                              <span>
+                                Min. {schedule.program.minUploads}{" "}
+                                {schedule.program.requirementType === "PHOTO"
+                                  ? "foto"
+                                  : "dokumen"}
+                              </span>
+                            </span>
+                            {statusInfo.ownerName && (
+                              <span className="hidden sm:inline">• {statusInfo.ownerName}</span>
+                            )}
+                          </div>
+                          {statusInfo.ownerName && (
+                            <div className="sm:hidden text-sm text-muted-foreground mt-1">
+                              Oleh: {statusInfo.ownerName}
+                            </div>
+                          )}
+                          <Badge variant="outline" className="mt-2 text-xs w-fit">
+                            {statusInfo.label}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Action Button */}
+                      <div className="flex sm:block w-full sm:w-auto">
+                        {statusInfo.status === "pending" && (
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handleContinue(statusInfo.sessionId!)
-                            }
+                            onClick={() => handleStart(schedule.id)}
+                            disabled={startMutation.isPending}
+                            className="w-full sm:w-auto"
                           >
-                            Lanjut
-                            <ChevronRight className="h-4 w-4 ml-1" />
+                            <Play className="h-4 w-4 mr-1" />
+                            Mulai
                           </Button>
                         )}
-                      {(statusInfo.status === "completed" ||
-                        statusInfo.status === "issue") &&
-                        statusInfo.sessionId && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              handleContinue(statusInfo.sessionId!)
-                            }
-                          >
-                            Lihat
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                          </Button>
-                        )}
+                        {statusInfo.status === "draft" &&
+                          statusInfo.sessionId && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleContinue(statusInfo.sessionId!)
+                              }
+                              className="w-full sm:w-auto"
+                            >
+                              Lanjut
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                          )}
+                        {(statusInfo.status === "completed" ||
+                          statusInfo.status === "issue") &&
+                          statusInfo.sessionId && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                handleContinue(statusInfo.sessionId!)
+                              }
+                              className="w-full sm:w-auto"
+                            >
+                              Lihat
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                          )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
