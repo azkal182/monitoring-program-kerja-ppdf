@@ -1,0 +1,298 @@
+name: CI/CD monitoring
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  start_notify:
+    runs-on: ubuntu-latest
+    outputs:
+      project_name: ${{ steps.get_project_info.outputs.project_name }}
+      project_version: ${{ steps.get_project_info.outputs.project_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get Project Info
+        id: get_project_info
+        run: |
+          if command -v jq &> /dev/null; then
+            echo "project_name=$(jq -r .name package.json)" >> $GITHUB_OUTPUT
+            echo "project_version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+          else
+            echo "project_name=monitoring" >> $GITHUB_OUTPUT
+            echo "project_version=v1.0.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set Timestamp
+        run: echo "TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_ENV
+
+      - name: Notify Start
+        run: |
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN_NOTIFICATION }}/sendMessage" \
+          -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d "text=🚀 CI/CD Started%0A📦 Project: ${{ steps.get_project_info.outputs.project_name }}%0A🔖 Version: ${{ steps.get_project_info.outputs.project_version }}%0A🕒 Time: ${{ env.TIMESTAMP }}%0AGithub Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  build:
+    needs: start_notify
+    runs-on: ubuntu-latest
+    outputs:
+      build_status: ${{ job.status }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Verify pnpm-lock.yaml exists
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            echo "pnpm-lock.yaml found"
+          else
+            echo "Error: pnpm-lock.yaml not found. Please commit it."
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '24.x'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.15.2
+
+      - name: Cache pnpm store
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Cache Next.js build cache
+        uses: actions/cache@v3
+        with:
+          path: ./.next/cache
+          key: ${{ runner.os }}-nextjs-build-${{ hashFiles('**/pnpm-lock.yaml', '**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-build-
+
+      - name: Create .env file
+        run: |
+          rm -f .env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "AUTH_SECRET=${{ secrets.AUTH_SECRET }}" >> .env
+          echo "AUTH_URL=${{ secrets.AUTH_URL }}" >> .env
+          echo "NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}" >> .env
+
+          echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" >> .env
+          echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .env
+
+          echo "STORAGE_DRIVER=${{ secrets.STORAGE_DRIVER }}" >> .env
+          echo "LOCAL_STORAGE_DIR=${{ secrets.LOCAL_STORAGE_DIR }}" >> .env
+
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
+          echo "SUPABASE_STORAGE_BUCKET=${{ secrets.SUPABASE_STORAGE_BUCKET }}" >> .env
+
+          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
+          echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
+
+          echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env
+
+          echo "HUSKY=0" >> .env
+          # echo "NODE_ENV=production" >> .env
+          # echo "NEXT_PUBLIC_IS_PRODUCTION=production" >> .env
+          echo "NEXT_PUBLIC_APP_VERSION=${{ needs.start_notify.outputs.project_version || '1.0.0' }}" >> .env
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js app
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm build
+
+      - name: Package artifacts
+        run: |
+          tar -czf build-files.tar.gz \
+            .next/ \
+            public/ \
+            package.json \
+            pnpm-lock.yaml \
+            next.config.* \
+            tailwind.config.* \
+            tsconfig.json \
+            .env.example || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-build-tarball
+          path: build-files.tar.gz
+          retention-days: 1
+
+  deploy:
+    needs: [build, start_notify]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: monitoring-build-tarball
+          path: ./
+
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add known hosts entry
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
+
+      - name: Clone or pull on VPS
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << EOF
+          set -e
+          APP_DIR="/home/${{ secrets.VPS_USER }}/project/monitoring"
+
+          if [ ! -d "\$APP_DIR/.git" ]; then
+            echo "Directory not found or not a git repo, cloning..."
+            rm -rf "\$APP_DIR"
+            GIT_URL="https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git"
+            git clone "\$GIT_URL" "\$APP_DIR"
+            cd "\$APP_DIR"
+            git checkout main
+          else
+            echo "Directory exists, pulling latest code..."
+            cd "\$APP_DIR"
+            git pull origin main
+          fi
+          EOF
+
+
+      - name: Deploy to VPS
+        run: |
+          rsync -avz build-files.tar.gz ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:/home/${{ secrets.VPS_USER }}/project/monitoring/
+
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'EOF'
+          set -e
+          APP_DIR="/home/${{ secrets.VPS_USER }}/project/monitoring"
+          cd "$APP_DIR"
+
+          # cleanup old build files
+          rm -rf .next/ public/ package.json pnpm-lock.yaml next.config.* tailwind.config.* tsconfig.json .env.example || true
+
+          # extract artifact
+          tar -xzf build-files.tar.gz
+          rm -f build-files.tar.gz
+
+          # recreate .env (app env, bukan ci/cd)
+          rm -f .env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "AUTH_SECRET=${{ secrets.AUTH_SECRET }}" >> .env
+          echo "AUTH_URL=${{ secrets.AUTH_URL }}" >> .env
+          echo "NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}" >> .env
+
+          echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" >> .env
+          echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .env
+
+          echo "STORAGE_DRIVER=${{ secrets.STORAGE_DRIVER }}" >> .env
+          echo "LOCAL_STORAGE_DIR=${{ secrets.LOCAL_STORAGE_DIR }}" >> .env
+
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
+          echo "SUPABASE_STORAGE_BUCKET=${{ secrets.SUPABASE_STORAGE_BUCKET }}" >> .env
+
+          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
+          echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
+
+          echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env
+
+          echo "HUSKY=0" >> .env
+          # echo "NODE_ENV=production" >> .env
+          # echo "NEXT_PUBLIC_IS_PRODUCTION=production" >> .env
+          echo "NEXT_PUBLIC_APP_VERSION=${{ needs.start_notify.outputs.project_version || '1.0.0' }}" >> .env
+
+          # setup nvm
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+          nvm use 24
+          node -v
+          pnpm -v
+
+
+          # install prod deps
+          if command -v pnpm >/dev/null 2>&1; then
+            pnpm install --frozen-lockfile
+            # pnpm install --production
+          else
+            npm i -g pnpm
+            pnpm install --frozen-lockfile
+            # pnpm install --production
+          fi
+
+          # restart pm2
+          echo "🔄 Restarting PM2 process..."
+          if pm2 describe monitoring > /dev/null 2>&1; then
+            pm2 stop monitoring || true
+            pm2 delete monitoring || true
+          fi
+
+          echo "Starting application on port 4466..."
+          pm2 start npm --name "monitoring" -- start -- -p 4466
+
+          sleep 5
+          pm2 describe monitoring > /dev/null
+          pm2 logs monitoring --lines 10 --nostream || true
+          EOF
+
+  notify:
+    needs: [start_notify, build, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_NAME: ${{ needs.start_notify.outputs.project_name || 'monitoring' }}
+      PROJECT_VERSION: ${{ needs.start_notify.outputs.project_version || 'Unknown Version' }}
+      GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Set Timestamp
+        run: echo "TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_ENV
+
+      - name: Send Telegram Notification
+        run: |
+          STATUS_ICON="✅"
+          STATUS_TEXT="CI/CD Success"
+          if [[ "${{ needs.build.result }}" != "success" || "${{ needs.deploy.result }}" != "success" ]]; then
+            STATUS_ICON="❌"
+            STATUS_TEXT="CI/CD Failed"
+          fi
+
+          MESSAGE="<b>$STATUS_ICON $STATUS_TEXT</b>%0A"
+          MESSAGE+="📦 Project: ${{ env.PROJECT_NAME }}%0A"
+          MESSAGE+="🔖 Version: ${{ env.PROJECT_VERSION }}%0A"
+          MESSAGE+="🕒 Time: ${{ env.TIMESTAMP }}%0A"
+          MESSAGE+="Github Run: ${{ env.GITHUB_RUN_URL }}%0A"
+          MESSAGE+="🌍 Port: 4455%0A"
+
+          if [[ "$STATUS_TEXT" == "CI/CD Failed" ]]; then
+            MESSAGE+="🚨 Please check logs!"
+          fi
+
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN_NOTIFICATION }}/sendMessage" \
+          -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d "parse_mode=HTML" \
+          -d "text=$MESSAGE"
