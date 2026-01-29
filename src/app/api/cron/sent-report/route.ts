@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const BASE_URL_API_WA =
   process.env.BASE_URL_API_WA ?? "https://wa-multi-session.amtsilatipusat.com/api/v1";
 const SESSION_ID_WA =
-  process.env.SESSION_ID_WA ?? "59c530cb-4b96-46b2-a49f-108a399660a8";
+  process.env.SESSION_ID_WA ?? "0b16bdce-a6c9-45ba-bbc4-040607197f18";
 const X_API_KEY_WA =
   process.env.X_API_KEY_WA ?? "7640cbef-cf76-4659-a64d-ac37752faa4d";
 const PHONE_NUMBER_WA = process.env.PHONE_NUMBER_WA ?? "120363407268999268@g.us";
