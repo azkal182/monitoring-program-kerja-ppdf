@@ -138,7 +138,14 @@ export default function DivisionsPage() {
                     {divisions?.map((division) => (
                       <TableRow key={division.id}>
                         <TableCell className="font-medium">
-                          {division.name}
+                          <div className="space-y-0.5">
+                            <div>{division.name}</div>
+                            {division.phoneNumber && (
+                              <div className="text-xs text-muted-foreground">
+                                {division.phoneNumber}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-[360px]">
                           {division.description ? (
@@ -212,6 +219,11 @@ export default function DivisionsPage() {
                         <p className="text-base font-semibold leading-tight">
                           {division.name}
                         </p>
+                        {division.phoneNumber && (
+                          <p className="text-xs text-muted-foreground">
+                            {division.phoneNumber}
+                          </p>
+                        )}
                         {division.description && (
                           <p
                             className="text-sm text-muted-foreground line-clamp-2 break-words"

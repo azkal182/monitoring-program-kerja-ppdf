@@ -6,6 +6,7 @@ export interface Division {
   id: string;
   name: string;
   description: string | null;
+  phoneNumber: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -43,6 +44,7 @@ export interface DivisionDetail extends Division {
 export interface DivisionInput {
   name: string;
   description?: string;
+  phoneNumber?: string;
 }
 
 interface FetchDivisionsParams {

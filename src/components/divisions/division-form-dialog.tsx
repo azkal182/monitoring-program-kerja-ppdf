@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -49,20 +49,22 @@ export function DivisionFormDialog({
     defaultValues: {
       name: division?.name || "",
       description: division?.description || "",
+      phoneNumber: division?.phoneNumber || "",
     },
   });
 
   // Reset form when division changes
-  useState(() => {
+  useEffect(() => {
     if (division) {
       form.reset({
         name: division.name,
         description: division.description || "",
+        phoneNumber: division.phoneNumber || "",
       });
     } else {
-      form.reset({ name: "", description: "" });
+      form.reset({ name: "", description: "", phoneNumber: "" });
     }
-  });
+  }, [division, form]);
 
   async function onSubmit(data: DivisionInput) {
     setIsLoading(true);
@@ -120,6 +122,23 @@ export function DivisionFormDialog({
                   <FormControl>
                     <Textarea
                       placeholder="Deskripsi singkat divisi..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nomor Telepon (Opsional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="Contoh: 0812-3456-7890"
                       {...field}
                     />
                   </FormControl>

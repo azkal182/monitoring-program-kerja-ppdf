@@ -174,6 +174,11 @@ export default function DivisionDetailPage() {
               {division.description}
             </p>
           )}
+          {division.phoneNumber && (
+            <p className="text-sm text-muted-foreground">
+              Kontak: {division.phoneNumber}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {/* <Badge variant="outline">{counts.users} Anggota</Badge> */}

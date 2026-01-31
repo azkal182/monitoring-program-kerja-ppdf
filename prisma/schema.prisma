@@ -54,6 +54,7 @@ model Division {
     id          String    @id @default(cuid())
     name        String    @unique
     description String?
+    phoneNumber String?
     users       User[]
     programs    Program[]
     createdAt   DateTime  @default(now())
