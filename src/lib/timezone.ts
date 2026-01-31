@@ -30,7 +30,8 @@ export function endOfJakartaDayUtc(input: Date | string = new Date()): Date {
 }
 
 export function getJakartaDayIndex(input: Date | string = new Date()): number {
-  return toJakartaDate(input).getDay();
+  const isoDay = Number(formatInJakarta(input, "i"));
+  return isoDay % 7;
 }
 
 export function startOfJakartaMonthUtc(input: Date | string = new Date()): Date {

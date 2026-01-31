@@ -140,8 +140,17 @@ export default function DivisionsPage() {
                         <TableCell className="font-medium">
                           {division.name}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {division.description || "-"}
+                        <TableCell className="text-muted-foreground max-w-[360px]">
+                          {division.description ? (
+                            <p
+                              className="line-clamp-2 break-words"
+                              title={division.description}
+                            >
+                              {division.description}
+                            </p>
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
                         {/* <TableCell className="text-center">
                           <Badge variant="secondary">
@@ -204,7 +213,10 @@ export default function DivisionsPage() {
                           {division.name}
                         </p>
                         {division.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
+                          <p
+                            className="text-sm text-muted-foreground line-clamp-2 break-words"
+                            title={division.description}
+                          >
                             {division.description}
                           </p>
                         )}

@@ -45,7 +45,12 @@ const navigationGroups: NavigationGroup[] = [
     title: "Utama",
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { name: "Monitoring V2", href: "/dashboard/monitoring-v2", icon: BarChart3, badge: "New" },
+      {
+        name: "Monitoring V2",
+        href: "/dashboard/monitoring-v2",
+        icon: BarChart3,
+        badge: "New",
+      },
     ],
   },
   {
@@ -57,8 +62,17 @@ const navigationGroups: NavigationGroup[] = [
         icon: Building2,
         adminOnly: true,
       },
-      { name: "Pengguna", href: "/dashboard/users", icon: Users, adminOnly: true },
-      { name: "Program Kerja", href: "/dashboard/programs", icon: ClipboardList },
+      {
+        name: "Pengguna",
+        href: "/dashboard/users",
+        icon: Users,
+        adminOnly: true,
+      },
+      {
+        name: "Program Kerja",
+        href: "/dashboard/programs",
+        icon: ClipboardList,
+      },
     ],
   },
   {
@@ -77,8 +91,11 @@ const navigationGroups: NavigationGroup[] = [
   {
     title: "Monitoring",
     items: [
-
-      { name: "Monitoring Lama", href: "/dashboard/monitoring", icon: BarChart3 },
+      {
+        name: "Monitoring Lama",
+        href: "/dashboard/monitoring",
+        icon: BarChart3,
+      },
     ],
   },
 ];
@@ -98,7 +115,7 @@ function NavItems({
     <nav className={cn("space-y-6", className)}>
       {navigationGroups.map((group) => {
         const visibleItems = group.items.filter(
-          (item) => !item.adminOnly || isAdmin
+          (item) => !item.adminOnly || isAdmin,
         );
 
         if (visibleItems.length === 0) return null;
@@ -125,7 +142,7 @@ function NavItems({
                       "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                       isActive
                         ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/40"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
                     <span
@@ -133,13 +150,16 @@ function NavItems({
                         "absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full transition-all",
                         isActive
                           ? "bg-primary opacity-100"
-                          : "bg-transparent opacity-0 group-hover:opacity-40 group-hover:bg-muted-foreground"
+                          : "bg-transparent opacity-0 group-hover:opacity-40 group-hover:bg-muted-foreground",
                       )}
                     />
                     <item.icon className="h-5 w-5" />
                     <span className="flex-1">{item.name}</span>
                     {item.badge && (
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs px-1.5 py-0"
+                      >
                         {item.badge}
                       </Badge>
                     )}
@@ -267,7 +287,7 @@ export function DashboardSidebar({
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <ClipboardList className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold">Monitoring</span>
+            <span className="font-semibold">KHIDMAH</span>
           </Link>
         </div>
         <SidebarContent onNavigate={onNavigate} userMenuAlign="start" />
@@ -282,7 +302,7 @@ export function DashboardSidebar({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <ClipboardList className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold">Monitoring</span>
+          <span className="font-semibold">Khidmah</span>
         </Link>
       </div>
       <SidebarContent onNavigate={onNavigate} userMenuAlign="end" />

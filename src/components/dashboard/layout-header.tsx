@@ -41,7 +41,7 @@ export function DashboardLayoutHeader({
             </SheetContent>
           </Sheet>
           <Link href="/dashboard" className="text-lg font-semibold sm:text-xl">
-            Monitoring
+            KHIDMAH
           </Link>
         </div>
 

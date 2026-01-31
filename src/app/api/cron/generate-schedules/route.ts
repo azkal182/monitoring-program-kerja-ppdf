@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateSchedulesForDate } from "@/lib/schedule-generator";
-import { getJakartaDateKey, toJakartaDate } from "@/lib/timezone";
+import {
+  APP_TIME_ZONE,
+  getJakartaDateKey,
+  startOfJakartaDayUtc,
+} from "@/lib/timezone";
 import { assertCronAuth } from "@/lib/cron";
 import { notifyCronSuccess, notifyCronFailure } from "@/lib/telegram";
 
@@ -11,17 +15,30 @@ export async function GET(request: NextRequest) {
     const unauthorized = assertCronAuth(request);
     if (unauthorized) return unauthorized;
 
-    // Explicitly get current date in Jakarta timezone
-    const jakartaNow = toJakartaDate();
-    const jakartaDateKey = getJakartaDateKey(jakartaNow);
+    const { searchParams } = new URL(request.url);
+    const dateParam = searchParams.get("date");
+    const DATE_PARAM_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
-    const count = await generateSchedulesForDate(jakartaNow);
+    if (dateParam && !DATE_PARAM_REGEX.test(dateParam)) {
+      return NextResponse.json(
+        { error: "Invalid date format. Use yyyy-mm-dd" },
+        { status: 400 }
+      );
+    }
+
+    const targetDate = dateParam ? startOfJakartaDayUtc(dateParam) : new Date();
+    const jakartaDateKey = getJakartaDateKey(targetDate);
+    const count = await generateSchedulesForDate(targetDate);
+    const dayLabel = targetDate.toLocaleDateString("id-ID", {
+      weekday: "long",
+      timeZone: APP_TIME_ZONE,
+    });
 
     // Send Telegram notification
     await notifyCronSuccess("Generate Schedules", {
       Date: jakartaDateKey,
       "Schedules Created": count,
-      Day: jakartaNow.toLocaleDateString("id-ID", { weekday: "long" }),
+      Day: dayLabel,
     });
 
     return NextResponse.json({

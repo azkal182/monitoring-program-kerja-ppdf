@@ -2,17 +2,17 @@ import prisma from "@/lib/prisma";
 import { ScheduleType } from "@/generated/prisma/enums";
 
 import {
+  formatInJakarta,
   getJakartaDateKey,
+  getJakartaDayIndex,
   startOfJakartaDayUtc,
-  toJakartaDate,
 } from "@/lib/timezone";
 
 export async function generateSchedulesForDate(date: Date): Promise<number> {
-  const jakartaDate = toJakartaDate(date);
-  const dayOfWeek = jakartaDate.getDay();
-  const dayOfMonth = jakartaDate.getDate();
-  const dateKey = getJakartaDateKey(jakartaDate);
-  const dateUtc = startOfJakartaDayUtc(jakartaDate);
+  const dayOfWeek = getJakartaDayIndex(date);
+  const dayOfMonth = Number(formatInJakarta(date, "d"));
+  const dateKey = getJakartaDateKey(date);
+  const dateUtc = startOfJakartaDayUtc(date);
 
   const existingSchedules = await prisma.scheduleInstance.findMany({
     where: { date: dateUtc },
