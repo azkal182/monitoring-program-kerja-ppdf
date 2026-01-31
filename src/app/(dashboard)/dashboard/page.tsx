@@ -10,8 +10,22 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, ClipboardList, CheckCircle, CalendarDays, Bell } from "lucide-react";
+import {
+  Building2,
+  Users,
+  ClipboardList,
+  CheckCircle,
+  CalendarDays,
+  Bell,
+  CalendarClock,
+} from "lucide-react";
 import prisma from "@/lib/prisma";
+import {
+  endOfJakartaMonthUtc,
+  formatInJakarta,
+  startOfJakartaMonthUtc,
+} from "@/lib/timezone";
+import { formatDate } from "@/lib/utils";
 
 async function getStats() {
   const [divisionCount, userCount, programCount, todaySessionCount] = await Promise.all([
@@ -31,9 +45,38 @@ async function getStats() {
   return { divisionCount, userCount, programCount, todaySessionCount };
 }
 
+async function getDeadlines(user?: {
+  role?: string | null;
+  divisionId?: string | null;
+}) {
+  const monthStart = startOfJakartaMonthUtc(new Date());
+  const monthEnd = endOfJakartaMonthUtc(new Date());
+  const isAdmin = user?.role === "ADMIN";
+
+  const divisionFilter = (() => {
+    if (isAdmin) return {};
+    if (user?.divisionId) {
+      return { OR: [{ divisionId: user.divisionId }, { divisionId: null }] };
+    }
+    return { divisionId: null };
+  })();
+
+  return prisma.deadline.findMany({
+    where: {
+      dueDate: { gte: monthStart, lte: monthEnd },
+      ...divisionFilter,
+    },
+    include: { division: { select: { name: true } } },
+    orderBy: [{ dueDate: "asc" }, { title: "asc" }],
+    take: 5,
+  });
+}
+
 export default async function DashboardPage() {
   const session = await auth();
   const stats = await getStats();
+  const deadlines = await getDeadlines(session?.user);
+  const monthLabel = formatInJakarta(new Date(), "MMMM yyyy");
 
   return (
     <div className="space-y-6">
@@ -134,7 +177,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Aktivitas Terbaru</CardTitle>
@@ -160,6 +203,50 @@ export default async function DashboardPage() {
             <p className="text-sm text-muted-foreground">
               Jalankan seed database untuk melihat data.
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4" />
+                  Deadline {monthLabel}
+                </CardTitle>
+                <CardDescription>
+                  Target yang perlu diselesaikan bulan ini
+                </CardDescription>
+              </div>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/dashboard/deadlines">Lihat Semua</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {deadlines.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Tidak ada deadline bulan ini.
+              </p>
+            ) : (
+              deadlines.map((deadline) => (
+                <div
+                  key={deadline.id}
+                  className="rounded-lg border border-dashed p-3 text-sm"
+                >
+                  <div className="font-medium">{deadline.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatDate(deadline.dueDate)} •{" "}
+                    {deadline.division?.name ?? "Umum"}
+                  </div>
+                  {deadline.description && (
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {deadline.description}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

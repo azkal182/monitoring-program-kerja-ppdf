@@ -72,6 +72,7 @@ function getPageTitle(pathname: string) {
   if (pathname.startsWith("/dashboard/users")) return "Pengguna";
   if (pathname.startsWith("/dashboard/programs")) return "Program Kerja";
   if (pathname.startsWith("/dashboard/schedules")) return "Jadwal";
+  if (pathname.startsWith("/dashboard/deadlines")) return "Deadline";
   if (pathname.startsWith("/dashboard/monitoring")) return "Monitoring";
   if (pathname === "/dashboard" || pathname === "/dashboard/") return "Beranda";
   return "Monitoring";

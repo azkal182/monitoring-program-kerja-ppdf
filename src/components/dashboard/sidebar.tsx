@@ -8,6 +8,7 @@ import {
   Users,
   ClipboardList,
   Calendar,
+  CalendarClock,
   BarChart3,
   LogOut,
   ChevronDown,
@@ -80,6 +81,7 @@ const navigationGroups: NavigationGroup[] = [
     items: [
       { name: "Jadwal", href: "/dashboard/schedules", icon: Calendar },
       { name: "Kalender", href: "/dashboard/calendar", icon: Calendar },
+      { name: "Deadline", href: "/dashboard/deadlines", icon: CalendarClock },
       {
         name: "Notifikasi",
         href: "/dashboard/push-notifications",
