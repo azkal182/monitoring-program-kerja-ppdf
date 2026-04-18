@@ -82,6 +82,9 @@ const navigationGroups: NavigationGroup[] = [
       { name: "Jadwal", href: "/dashboard/schedules", icon: Calendar },
       { name: "Kalender", href: "/dashboard/calendar", icon: Calendar },
       { name: "Deadline", href: "/dashboard/deadlines", icon: CalendarClock },
+      { name: "Tugas", href: "/dashboard/tasks", icon: CalendarClock },
+      { name: "Agenda", href: "/dashboard/agendas", icon: CalendarClock },
+
       {
         name: "Notifikasi",
         href: "/dashboard/push-notifications",
