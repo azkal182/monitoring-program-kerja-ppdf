@@ -165,7 +165,7 @@ const AgendasPage = () => {
                   onValueChange={(value) => setSelectedQuarterId(value)}
                 >
                   <SelectTrigger className="h-9 w-55">
-                    <SelectValue placeholder="Semua divisi" />
+                    <SelectValue placeholder="Pilih Kuartal" />
                   </SelectTrigger>
                   <SelectContent>
                     {quarters?.map((quarter) => (
