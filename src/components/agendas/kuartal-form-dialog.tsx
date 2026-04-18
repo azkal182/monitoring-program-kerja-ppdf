@@ -92,7 +92,7 @@ const KuartalFormDialog = ({ open, onOpenChange }: DivisionFormDialogProps) => {
                       <Input
                         id="name"
                         autoComplete="off"
-                        placeholder="Kuartal 1 (2025-2026) / Semester 1 (2025-2026)"
+                        placeholder="Kuartal 1 / Semester 1 "
                         {...field}
                       />
                       {form.formState.errors.name && (
