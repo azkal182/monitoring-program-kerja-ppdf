@@ -25,29 +25,32 @@ import z from "zod";
 import { PeriodPicker } from "../periode-picker";
 import { useCreateQuarter } from "@/hooks/quarter";
 import { toast } from "sonner";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface DivisionFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const kuartalFormSchema = z.object({
   name: z.string().min(1, "Nama kuartal wajib diisi"),
   period: z.string().min(1, "Periode wajib dipilih"),
 });
 
+type KuartalInput = z.infer<typeof kuartalFormSchema>;
+
 const KuartalFormDialog = ({ open, onOpenChange }: DivisionFormDialogProps) => {
   const [loading, setLoading] = useState(false);
   const createMutation = useCreateQuarter();
-  const form = useForm<z.infer<typeof kuartalFormSchema>>({
+  const form = useForm<KuartalInput>({
+    resolver: zodResolver(kuartalFormSchema),
     defaultValues: {
       name: "",
       period: "",
     },
   });
 
-  const handleSubmit = (data: z.infer<typeof kuartalFormSchema>) => {
+  const handleSubmit = (data: KuartalInput) => {
     console.log("Form data:", data);
     setLoading(true);
     try {
@@ -80,12 +83,12 @@ const KuartalFormDialog = ({ open, onOpenChange }: DivisionFormDialogProps) => {
             id="kuartal-form"
           >
             <FieldSet>
-              <FieldGroup>
+              <FieldGroup className="gap-4">
                 <Controller
                   name="name"
                   control={form.control}
                   render={({ field }) => (
-                    <Field>
+                    <Field className="gap-1">
                       <FieldLabel htmlFor="name">
                         Nama Kuartal / Semester
                       </FieldLabel>

@@ -160,7 +160,7 @@ const AgendaFormDialog = ({
                   name="personResponsible"
                   control={form.control}
                   render={({ field }) => (
-                    <Field className="gap-4">
+                    <Field className="gap-1">
                       <FieldLabel htmlFor="personResponsible">
                         Penanggung Jawab
                       </FieldLabel>
@@ -182,7 +182,7 @@ const AgendaFormDialog = ({
                   name="date"
                   control={form.control}
                   render={({ field }) => (
-                    <Field className="gap-4">
+                    <Field className="gap-1">
                       <FieldLabel htmlFor="date">Tanggal</FieldLabel>
 
                       <Popover>

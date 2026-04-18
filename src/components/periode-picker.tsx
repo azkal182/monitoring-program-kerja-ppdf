@@ -52,7 +52,7 @@ export function PeriodPicker({
         name={name}
         control={control}
         render={({ field }) => (
-          <Field>
+          <Field className="gap-1">
             {label && <FieldLabel htmlFor="period">{label}</FieldLabel>}
 
             <Select value={field.value} onValueChange={field.onChange}>
