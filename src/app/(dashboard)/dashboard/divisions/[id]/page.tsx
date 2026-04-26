@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ClipboardList,
-  Users as UsersIcon,
   Clock,
   Camera,
   CalendarDays,
@@ -22,7 +21,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
 const scheduleTypeConfigs: {
   key: "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM";

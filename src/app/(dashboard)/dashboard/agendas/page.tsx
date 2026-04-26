@@ -32,14 +32,12 @@ import {
   useAgendas,
   useDeleteAgenda,
   useMarkAgendaDone,
-  useUpdateAgenda,
 } from "@/hooks/use-agenda";
 import { AgendaInput } from "@/lib/validations/agenda";
 import { format, parse } from "date-fns";
 import {
   CalendarDays,
   Check,
-  CircleFadingArrowUpIcon,
   Pencil,
   Plus,
   Trash2,

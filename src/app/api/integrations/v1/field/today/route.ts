@@ -1,27 +1,12 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { getTodaySchedules } from "@/lib/schedule-generator";
-import { generateSchedulesForDate } from "@/lib/schedule-generator";
+import { NextRequest, NextResponse } from "next/server";
+import { generateSchedulesForDate, getTodaySchedules } from "@/lib/schedule-generator";
 import {
   authenticateIntegrationClient,
   resolveIntegrationDivision,
 } from "@/lib/integration-auth";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-
-    if (session?.user) {
-      // Generate schedules for today if not exist
-      await generateSchedulesForDate(new Date());
-
-      // Get user's division schedules
-      const divisionId = session.user.divisionId || undefined;
-      const schedules = await getTodaySchedules(divisionId);
-
-      return NextResponse.json(schedules);
-    }
-
     const integrationClient = authenticateIntegrationClient(request);
     if (!integrationClient.ok) {
       return NextResponse.json(
@@ -47,16 +32,12 @@ export async function GET(request: Request) {
     await generateSchedulesForDate(new Date());
     const schedules = await getTodaySchedules(resolvedDivision.divisionId);
 
-    return NextResponse.json({
-      integrationClient: integrationClient.clientName,
-      divisionId: resolvedDivision.divisionId,
-      schedules,
-    });
+    return NextResponse.json(schedules);
   } catch (error) {
-    console.error("Error fetching today schedules:", error);
+    console.error("Integration field/today API error:", error);
     return NextResponse.json(
-      { error: "Gagal mengambil jadwal hari ini" },
-      { status: 500 }
+      { error: "Failed to fetch schedules" },
+      { status: 500 },
     );
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Plus,
   MoreHorizontal,
@@ -56,12 +56,6 @@ export default function DivisionsPage() {
   );
   const hasNextPage = (divisions?.length ?? 0) === pageSize;
   const hasPrevPage = page > 1;
-
-  useEffect(() => {
-    if (!isLoading && (divisions?.length ?? 0) === 0 && page > 1) {
-      setPage((prev) => Math.max(prev - 1, 1));
-    }
-  }, [divisions, isLoading, page]);
 
   function handleEdit(division: Division) {
     setSelectedDivision(division);

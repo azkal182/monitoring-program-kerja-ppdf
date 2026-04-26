@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   let json: unknown;
   try {
     json = await request.json();
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
@@ -154,7 +154,7 @@ export async function DELETE(request: Request) {
   let json: unknown;
   try {
     json = await request.json();
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
@@ -171,7 +171,7 @@ export async function DELETE(request: Request) {
     await prisma.pushSubscription.delete({
       where: { endpoint },
     });
-  } catch (error) {
+  } catch {
     // ignore missing entries
   }
 

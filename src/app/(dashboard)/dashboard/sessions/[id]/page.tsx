@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft,
-  Camera,
   FileText,
   Clock,
   CheckCircle,
@@ -13,7 +12,7 @@ import {
   Download,
 } from "lucide-react";
 import { useSession as useSessionDetail } from "@/hooks/use-sessions";
-import { formatDate, formatDateTime, formatTime } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,16 +38,16 @@ function getStatusBadge(status: string) {
   }
 }
 
-function getStatusIcon(status: string) {
+function renderStatusIcon(status: string) {
   switch (status) {
     case "COMPLETED":
-      return CheckCircle;
+      return <CheckCircle className="h-4 w-4" />;
     case "COMPLETED_WITH_ISSUE":
-      return AlertTriangle;
+      return <AlertTriangle className="h-4 w-4" />;
     case "NOT_EXECUTED":
-      return XCircle;
+      return <XCircle className="h-4 w-4" />;
     default:
-      return Clock;
+      return <Clock className="h-4 w-4" />;
   }
 }
 
@@ -75,7 +74,6 @@ export default function SessionDetailPage() {
     );
   }
 
-  const StatusIcon = getStatusIcon(session.status);
   const requirementType = session.schedule.program.requirementType;
   const hasEvidence =
     requirementType === "PHOTO"
@@ -113,7 +111,7 @@ export default function SessionDetailPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <StatusIcon className="h-4 w-4" />
+            {renderStatusIcon(session.status)}
             <span>Status: {session.status}</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">

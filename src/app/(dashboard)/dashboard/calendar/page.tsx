@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useSession } from "next-auth/react";
 import {
   addMonths,
@@ -87,17 +87,11 @@ export default function CalendarPage() {
   const { data, isLoading, isFetching } = useProgramCalendar(monthParam);
   const timezone = data?.timezone ?? "Asia/Jakarta";
 
-  useEffect(() => {
-    setSelectedDate((prev) => {
-      if (prev && isSameMonth(prev, currentMonth)) {
-        return prev;
-      }
-      if (isSameMonth(today, currentMonth)) {
-        return today;
-      }
-      return currentMonth;
-    });
-  }, [currentMonth, today]);
+  function moveToMonth(nextMonth: Date) {
+    const normalizedMonth = startOfMonth(nextMonth);
+    setCurrentMonth(normalizedMonth);
+    setSelectedDate(isSameMonth(today, normalizedMonth) ? today : normalizedMonth);
+  }
 
   const selectedDateKey = useMemo(
     () => formatJakartaKey(selectedDate, timezone),
@@ -211,7 +205,7 @@ export default function CalendarPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setCurrentMonth((prev) => subMonths(prev, 1));
+              moveToMonth(subMonths(currentMonth, 1));
             }}
           >
             <ChevronLeft className="mr-1 h-4 w-4" />
@@ -224,7 +218,7 @@ export default function CalendarPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setCurrentMonth((prev) => addMonths(prev, 1));
+              moveToMonth(addMonths(currentMonth, 1));
             }}
           >
             Berikutnya
@@ -272,7 +266,7 @@ export default function CalendarPage() {
             {!isLoading && (
               <Calendar
                 month={currentMonth}
-                onMonthChange={(month) => setCurrentMonth(startOfMonth(month))}
+                onMonthChange={moveToMonth}
                 selected={selectedDate}
                 onSelect={(date) => date && setSelectedDate(date)}
                 mode="single"

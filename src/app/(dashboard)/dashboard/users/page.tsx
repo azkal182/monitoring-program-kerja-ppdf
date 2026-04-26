@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Plus, MoreHorizontal, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,12 +48,6 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const hasNextPage = (users?.length ?? 0) === pageSize;
   const hasPrevPage = page > 1;
-
-  useEffect(() => {
-    if (!isLoading && (users?.length ?? 0) === 0 && page > 1) {
-      setPage((prev) => Math.max(prev - 1, 1));
-    }
-  }, [isLoading, users, page]);
 
   function handleEdit(user: User) {
     setSelectedUser(user);

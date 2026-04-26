@@ -31,7 +31,17 @@ export async function GET(request: NextRequest) {
     });
 
     // Remove password from response
-    const sanitizedUsers = users.map(({ password: _, ...user }) => user);
+    const sanitizedUsers = users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      telegramId: user.telegramId,
+      divisionId: user.divisionId,
+      division: user.division,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    }));
 
     return NextResponse.json(sanitizedUsers);
   } catch (error) {
@@ -92,7 +102,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const { password: _, ...sanitizedUser } = user;
+    const sanitizedUser = {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      telegramId: user.telegramId,
+      divisionId: user.divisionId,
+      division: user.division,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
     return NextResponse.json(sanitizedUser, { status: 201 });
   } catch (error) {
     console.error("Error creating user:", error);

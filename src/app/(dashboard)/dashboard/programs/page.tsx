@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Plus,
   MoreHorizontal,
@@ -78,12 +78,6 @@ export default function ProgramsPage() {
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
   const hasNextPage = (programs?.length ?? 0) === pageSize;
   const hasPrevPage = page > 1;
-
-  useEffect(() => {
-    if (!isLoading && (programs?.length ?? 0) === 0 && page > 1) {
-      setPage((prev) => Math.max(prev - 1, 1));
-    }
-  }, [isLoading, page, programs]);
 
   function handleEdit(program: Program) {
     setSelectedProgram(program);

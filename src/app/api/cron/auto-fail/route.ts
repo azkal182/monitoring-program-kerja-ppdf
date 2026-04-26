@@ -173,7 +173,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Auto-complete DRAFT sessions that meet requirements
-    let completedCount = 0;
     if (draftSessionsToComplete.length > 0) {
       await prisma.session.updateMany({
         where: {
@@ -186,7 +185,6 @@ export async function GET(request: NextRequest) {
           submittedAt: new Date(),
         },
       });
-      completedCount = draftSessionsToComplete.length;
     }
 
     // Mark DRAFT sessions that don't meet requirements as NOT_EXECUTED

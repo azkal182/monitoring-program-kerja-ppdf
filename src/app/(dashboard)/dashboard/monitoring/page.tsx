@@ -10,7 +10,6 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
-  Clock,
   TrendingUp,
   Building2,
   FileText,

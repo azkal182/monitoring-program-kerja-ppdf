@@ -80,7 +80,8 @@ export async function PUT(
       );
     }
 
-    const { id: _, ...data } = parsed.data;
+    const { id: parsedId, ...data } = parsed.data;
+    void parsedId;
 
     const existingProgram = await prisma.program.findUnique({
       where: { id },

@@ -37,7 +37,17 @@ export async function GET(
       );
     }
 
-    const { password: _, ...sanitizedUser } = user;
+    const sanitizedUser = {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      telegramId: user.telegramId,
+      divisionId: user.divisionId,
+      division: user.division,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
     return NextResponse.json(sanitizedUser);
   } catch (error) {
     console.error("Error fetching user:", error);
@@ -69,7 +79,12 @@ export async function PUT(
       );
     }
 
-    const { password, id: _, ...data } = parsed.data;
+    const password = parsed.data.password;
+    const data = Object.fromEntries(
+      Object.entries(parsed.data).filter(
+        ([key]) => key !== "password" && key !== "id",
+      ),
+    );
 
     // Check email uniqueness
     if (data.username) {
@@ -98,7 +113,17 @@ export async function PUT(
       },
     });
 
-    const { password: __, ...sanitizedUser } = user;
+    const sanitizedUser = {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      telegramId: user.telegramId,
+      divisionId: user.divisionId,
+      division: user.division,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
     return NextResponse.json(sanitizedUser);
   } catch (error) {
     console.error("Error updating user:", error);

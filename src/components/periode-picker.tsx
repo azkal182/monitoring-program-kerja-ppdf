@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Field, FieldError, FieldLabel } from "./ui/field";
 
 // Utility to generate periods like 2025-2026

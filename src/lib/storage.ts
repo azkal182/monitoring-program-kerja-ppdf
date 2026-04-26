@@ -88,7 +88,7 @@ class LocalStorageAdapter implements StorageAdapter {
     const absolutePath = path.join(this.baseDir, storagePath);
     try {
       await unlink(absolutePath);
-    } catch (error) {
+    } catch {
       // ignore missing files
     }
   }

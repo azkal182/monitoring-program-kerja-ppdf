@@ -32,6 +32,13 @@ Optional (recommended):
 - `MAX_UPLOAD_MB` - Maximum upload size in MB (default: 10).
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` - Web push configuration.
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` - Supabase storage driver.
+- `INTEGRATION_CLIENTS_JSON` - Konfigurasi API key integrasi per divisi (lihat `docs/integration-api.md`).
+
+## Integration API
+
+Panduan lengkap integrasi aplikasi eksternal tersedia di:
+
+- `docs/integration-api.md`
 
 ## Learn More
 
