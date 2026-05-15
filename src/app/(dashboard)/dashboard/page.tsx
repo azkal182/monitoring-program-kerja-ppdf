@@ -18,6 +18,7 @@ import {
   Bell,
   CalendarClock,
 } from "lucide-react";
+import { PageContent } from "@/components/dashboard/page-content";
 import prisma from "@/lib/prisma";
 import {
   endOfJakartaMonthUtc,
@@ -92,13 +93,10 @@ export default async function DashboardPage() {
   const monthLabel = formatInJakarta(new Date(), "MMMM yyyy");
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Selamat datang, {session?.user?.name}!
-        </p>
-      </div>
+    <PageContent
+      title="Dashboard"
+      description={`Selamat datang, ${session?.user?.name ?? "Pengguna"}!`}
+    >
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="shadow-sm">
@@ -291,6 +289,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContent>
   );
 }

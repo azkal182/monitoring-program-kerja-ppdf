@@ -11,6 +11,7 @@ import { DivisionAccordion } from "@/components/monitoring/division-accordion";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageContent } from "@/components/dashboard/page-content";
 
 export default function MonitoringV2Page() {
   const [period, setPeriod] = useState<"daily" | "monthly">("daily");
@@ -59,16 +60,10 @@ export default function MonitoringV2Page() {
       : format(currentDate, "MMMM yyyy", { locale: id });
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Monitoring Program Kerja</h1>
-          <p className="text-muted-foreground">
-            Dashboard monitoring dengan tampilan harian dan bulanan
-          </p>
-        </div>
-      </div>
+    <PageContent
+      title="Monitoring Program Kerja"
+      description="Dashboard monitoring dengan tampilan harian dan bulanan"
+    >
 
       {/* Period Toggle */}
       <Tabs value={period} onValueChange={(v) => setPeriod(v as "daily" | "monthly")}>
@@ -216,6 +211,6 @@ export default function MonitoringV2Page() {
           </>
         )}
       </Tabs>
-    </div>
+    </PageContent>
   );
 }

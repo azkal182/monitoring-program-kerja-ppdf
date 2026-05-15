@@ -12,6 +12,7 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 import { useDivisions } from "@/hooks/use-divisions";
 import {
@@ -51,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProgramFormDialog } from "@/components/programs/program-form-dialog";
+import { PageContent } from "@/components/dashboard/page-content";
 
 const scheduleTypeLabels = {
   DAILY: "Harian",
@@ -60,6 +62,8 @@ const scheduleTypeLabels = {
 };
 
 export default function ProgramsPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("all");
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -111,40 +115,39 @@ export default function ProgramsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Program Kerja</h1>
-          <p className="text-muted-foreground">
-            Kelola program kerja setiap Departemen/Asrama
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Select
-            value={selectedDivisionId}
-            onValueChange={(value) => {
-              setSelectedDivisionId(value);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-64">
-              <SelectValue placeholder="Semua Divisi" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Departemen</SelectItem>
-              {divisions?.map((division) => (
-                <SelectItem key={division.id} value={division.id}>
-                  {division.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button onClick={handleCreate}>
+    <PageContent
+      title="Program Kerja"
+      description="Kelola program kerja setiap Departemen/Asrama"
+      actions={
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          {isAdmin && (
+            <Select
+              value={selectedDivisionId}
+              onValueChange={(value) => {
+                setSelectedDivisionId(value);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-64">
+                <SelectValue placeholder="Semua Divisi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Departemen</SelectItem>
+                {divisions?.map((division) => (
+                  <SelectItem key={division.id} value={division.id}>
+                    {division.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button onClick={handleCreate} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Tambah Program
           </Button>
         </div>
-      </div>
+      }
+    >
 
       <Card>
         <CardHeader>
@@ -168,11 +171,12 @@ export default function ProgramsPage() {
             </div>
           ) : (
             <>
-              <div className="hidden md:block">
-                <Table>
+              <div className="hidden lg:block">
+                <div className="overflow-x-auto">
+                <Table className="min-w-[980px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Program</TableHead>
+                      <TableHead className="w-[320px] max-w-[320px]">Program</TableHead>
                       <TableHead>Divisi</TableHead>
                       <TableHead>Tipe</TableHead>
                       <TableHead>Jadwal</TableHead>
@@ -184,8 +188,8 @@ export default function ProgramsPage() {
                   <TableBody>
                     {programs?.map((program) => (
                       <TableRow key={program.id}>
-                        <TableCell>
-                          <div>
+                        <TableCell className="w-[320px] max-w-[320px]">
+                          <div className="max-w-[320px]">
                             <div className="font-medium">{program.name}</div>
                             {program.description && (
                               <div className="text-sm text-muted-foreground line-clamp-1">
@@ -263,9 +267,10 @@ export default function ProgramsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
 
-              <div className="grid gap-3 md:hidden">
+              <div className="grid gap-3 lg:hidden">
                 {programs?.map((program) => (
                   <div
                     key={program.id}
@@ -378,6 +383,6 @@ export default function ProgramsPage() {
         onOpenChange={setDialogOpen}
         program={selectedProgram}
       />
-    </div>
+    </PageContent>
   );
 }

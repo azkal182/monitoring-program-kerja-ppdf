@@ -46,6 +46,7 @@ import {
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PageContent } from "@/components/dashboard/page-content";
 
 const AgendasPage = () => {
   const { confirm } = useConfirmation();
@@ -118,15 +119,11 @@ const AgendasPage = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Agenda</h1>
-          <p className="text-muted-foreground">
-            Pantau Agenda yang harus diselesaikan sebelum tanggal tertentu.
-          </p>
-        </div>
-        {isAdmin && (
+    <PageContent
+      title="Agenda"
+      description="Pantau agenda yang harus diselesaikan sebelum tanggal tertentu."
+      actions={
+        isAdmin ? (
           <div className="flex w-full items-center gap-2 sm:w-auto">
             <Button
               className="flex-1 sm:flex-none"
@@ -143,8 +140,9 @@ const AgendasPage = () => {
               Agenda
             </Button>
           </div>
-        )}
-      </div>
+        ) : null
+      }
+    >
 
       <Card className="shadow-sm">
         <CardHeader className="space-y-3">
@@ -179,8 +177,9 @@ const AgendasPage = () => {
         </CardHeader>
         <CardContent>
           {/* ───── Desktop: Table ───── */}
-          <div className="hidden md:block">
-            <Table>
+          <div className="hidden lg:block">
+            <div className="overflow-x-auto">
+            <Table className="min-w-[860px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>No</TableHead>
@@ -249,10 +248,11 @@ const AgendasPage = () => {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           {/* ───── Mobile: Cards ───── */}
-          <div className="flex flex-col gap-3 md:hidden">
+          <div className="flex flex-col gap-3 lg:hidden">
             {agendas?.map((agenda, index) => (
               <div
                 key={agenda.id}
@@ -349,7 +349,7 @@ const AgendasPage = () => {
         quarter={selectedQuarter}
         agenda={selectedAgenda ?? undefined}
       />
-    </div>
+    </PageContent>
   );
 };
 

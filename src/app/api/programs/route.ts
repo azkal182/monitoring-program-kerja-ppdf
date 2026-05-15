@@ -49,7 +49,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    const canManagePrograms =
+      session?.user?.role === "ADMIN" || session?.user?.role === "KOORDINATOR";
+
+    if (!session?.user || !canManagePrograms) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -60,6 +63,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
         { status: 400 }
+      );
+    }
+
+    if (
+      session.user.role === "KOORDINATOR" &&
+      (!session.user.divisionId || parsed.data.divisionId !== session.user.divisionId)
+    ) {
+      return NextResponse.json(
+        { error: "Koordinator hanya dapat membuat program untuk divisinya sendiri" },
+        { status: 403 }
       );
     }
 

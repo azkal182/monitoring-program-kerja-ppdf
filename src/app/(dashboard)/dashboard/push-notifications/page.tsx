@@ -8,6 +8,7 @@ import { PushNotificationPanel } from "@/components/dashboard/push-notification-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageContent } from "@/components/dashboard/page-content";
 
 export default function PushNotificationsPage() {
   const { data: session } = useSession();
@@ -32,21 +33,21 @@ export default function PushNotificationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <Badge variant="secondary" className="flex w-fit items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Admin Only
-          </Badge>
-          <h1 className="text-3xl font-bold">Kelola Notifikasi Push</h1>
-          <p className="text-sm text-muted-foreground">
-            Kirim pemberitahuan ke seluruh pengguna atau pilih target spesifik untuk mengingatkan aktivitas program kerja.
-          </p>
-        </div>
-        <Button asChild variant="outline">
+    <PageContent
+      title="Kelola Notifikasi Push"
+      description="Kirim pemberitahuan ke seluruh pengguna atau target spesifik untuk mengingatkan aktivitas program kerja."
+      actions={
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/dashboard">Kembali ke Dashboard</Link>
         </Button>
+      }
+      headerClassName="items-end"
+    >
+      <div className="space-y-1">
+        <Badge variant="secondary" className="flex w-fit items-center gap-1">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Admin Only
+        </Badge>
       </div>
 
       <PushNotificationPanel />
@@ -65,6 +66,6 @@ export default function PushNotificationsPage() {
           </ul>
         </CardContent>
       </Card>
-    </div>
+    </PageContent>
   );
 }

@@ -29,7 +29,7 @@ export function DashboardLayoutHeader({
         <div className="flex items-center gap-3">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button variant="ghost" size="icon" className="xl:hidden">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>

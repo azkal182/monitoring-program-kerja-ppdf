@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { DivisionFormDialog } from "@/components/divisions/division-form-dialog";
+import { PageContent } from "@/components/dashboard/page-content";
 
 export default function DivisionsPage() {
   const [page, setPage] = useState(1);
@@ -81,19 +82,16 @@ export default function DivisionsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Departemen</h1>
-          <p className="text-muted-foreground">
-            Kelola Departemen/Asrama kerja di pondok
-          </p>
-        </div>
-        <Button onClick={handleCreate}>
+    <PageContent
+      title="Departemen"
+      description="Kelola Departemen/Asrama kerja di pondok"
+      actions={
+        <Button onClick={handleCreate} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Tambah Departemen
         </Button>
-      </div>
+      }
+    >
 
       <Card>
         <CardHeader>
@@ -117,8 +115,9 @@ export default function DivisionsPage() {
             </div>
           ) : (
             <>
-              <div className="hidden md:block">
-                <Table>
+              <div className="hidden lg:block">
+                <div className="overflow-x-auto">
+                <Table className="min-w-[860px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nama</TableHead>
@@ -200,9 +199,10 @@ export default function DivisionsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
 
-              <div className="grid gap-3 md:hidden">
+              <div className="grid gap-3 lg:hidden">
                 {divisions?.map((division) => (
                   <div
                     key={division.id}
@@ -314,6 +314,6 @@ export default function DivisionsPage() {
         onOpenChange={setDialogOpen}
         division={selectedDivision}
       />
-    </div>
+    </PageContent>
   );
 }

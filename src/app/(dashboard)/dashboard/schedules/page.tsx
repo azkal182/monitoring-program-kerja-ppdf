@@ -21,12 +21,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScheduleTable } from "@/components/dashboard/schedule-table";
 import { ScheduleCards } from "@/components/dashboard/schedule-cards";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { PageContent } from "@/components/dashboard/page-content";
 
 export default function SchedulesPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
-  const isMobile = useIsMobile();
 
   const [selectedDate, setSelectedDate] = useState(() =>
     getJakartaDateKey(new Date())
@@ -48,14 +47,10 @@ export default function SchedulesPage() {
   }, [schedules, selectedDivisionId, isAdmin]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Jadwal Harian</h1>
-          <p className="text-muted-foreground">
-            {formatDate(selectedDate)} ({getJakartaDayName(selectedDate)})
-          </p>
-        </div>
+    <PageContent
+      title="Jadwal Harian"
+      description={`${formatDate(selectedDate)} (${getJakartaDayName(selectedDate)})`}
+      actions={
         <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
           <Input
             type="date"
@@ -82,10 +77,11 @@ export default function SchedulesPage() {
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
-          )}
+              </Select>
+            )}
         </div>
-      </div>
+      }
+    >
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -105,13 +101,14 @@ export default function SchedulesPage() {
         </Card>
       ) : (
         <>
-          {/* Desktop: Table View */}
-          {!isMobile && <ScheduleTable schedules={filteredSchedules} />}
-
-          {/* Mobile: Card View */}
-          {isMobile && <ScheduleCards schedules={filteredSchedules} />}
+          <div className="hidden lg:block">
+            <ScheduleTable schedules={filteredSchedules} />
+          </div>
+          <div className="lg:hidden">
+            <ScheduleCards schedules={filteredSchedules} />
+          </div>
         </>
       )}
-    </div>
+    </PageContent>
   );
 }

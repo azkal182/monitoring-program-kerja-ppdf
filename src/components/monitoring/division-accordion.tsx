@@ -161,8 +161,9 @@ export function DivisionAccordion({ divisions }: DivisionAccordionProps) {
           <AccordionContent>
             <div className="px-6 pb-4 pt-2">
               {/* Desktop Table View */}
-              <div className="hidden md:block">
-                <Table>
+              <div className="hidden lg:block">
+                <div className="overflow-x-auto">
+                <Table className="min-w-[860px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Program</TableHead>
@@ -202,10 +203,11 @@ export function DivisionAccordion({ divisions }: DivisionAccordionProps) {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
 
               {/* Mobile Card View */}
-              <div className="md:hidden space-y-3">
+              <div className="space-y-3 lg:hidden">
                 {division.programs.map((program) => (
                   <Card key={program.scheduleId}>
                     <CardContent className="p-4">

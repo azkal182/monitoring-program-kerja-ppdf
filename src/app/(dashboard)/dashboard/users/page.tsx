@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { UserFormDialog } from "@/components/users/user-form-dialog";
+import { PageContent } from "@/components/dashboard/page-content";
 
 const roleLabels = {
   ADMIN: { label: "Admin", variant: "default" as const },
@@ -71,19 +72,16 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Pengguna</h1>
-          <p className="text-muted-foreground">
-            Kelola pengguna sistem
-          </p>
-        </div>
-        <Button onClick={handleCreate}>
+    <PageContent
+      title="Pengguna"
+      description="Kelola pengguna sistem"
+      actions={
+        <Button onClick={handleCreate} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Tambah Pengguna
         </Button>
-      </div>
+      }
+    >
 
       <Card>
         <CardHeader>
@@ -107,8 +105,9 @@ export default function UsersPage() {
             </div>
           ) : (
             <>
-              <div className="hidden md:block">
-                <Table>
+              <div className="hidden lg:block">
+                <div className="overflow-x-auto">
+                <Table className="min-w-[760px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nama</TableHead>
@@ -157,9 +156,10 @@ export default function UsersPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
 
-              <div className="grid gap-3 md:hidden">
+              <div className="grid gap-3 lg:hidden">
                 {users?.map((user) => (
                   <div
                     key={user.id}
@@ -236,6 +236,6 @@ export default function UsersPage() {
         onOpenChange={setDialogOpen}
         user={selectedUser}
       />
-    </div>
+    </PageContent>
   );
 }

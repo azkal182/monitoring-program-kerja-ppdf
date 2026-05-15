@@ -21,6 +21,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageContent } from "@/components/dashboard/page-content";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+} from "@/components/dashboard/page-state";
 
 const scheduleTypeConfigs: {
   key: "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM";
@@ -95,65 +101,43 @@ export default function DivisionDetailPage() {
 
   if (!divisionId) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold">Divisi tidak ditemukan</h1>
-        <p className="text-muted-foreground">ID divisi tidak valid.</p>
-        <Button onClick={() => router.replace("/dashboard/divisions")}>
-          Kembali
-        </Button>
-      </div>
+      <PageContent title="Detail Departemen">
+        <EmptyState
+          title="Divisi tidak ditemukan"
+          description="ID divisi tidak valid."
+          action={
+            <Button onClick={() => router.replace("/dashboard/divisions")}>
+              Kembali
+            </Button>
+          }
+        />
+      </PageContent>
     );
   }
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
-          <div className="space-y-2">
-            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-            <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, idx) => (
-            <Card key={idx}>
-              <CardContent className="space-y-3 p-6">
-                <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                <div className="h-6 w-32 animate-pulse rounded bg-muted" />
-                <div className="h-3 w-full animate-pulse rounded bg-muted" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+    return <LoadingState label="Memuat detail departemen..." />;
   }
 
   if (isError || !division) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold">Gagal memuat divisi</h1>
-        <p className="text-muted-foreground">
-          Terjadi kesalahan saat mengambil data. Coba ulangi.
-        </p>
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => router.push("/dashboard/divisions")}
-          >
-            Kembali
-          </Button>
-          <Button onClick={() => refetch()}>Muat ulang</Button>
-        </div>
-      </div>
+      <PageContent title="Detail Departemen">
+        <ErrorState
+          title="Gagal memuat divisi"
+          description="Terjadi kesalahan saat mengambil data."
+          onRetry={() => refetch()}
+        />
+      </PageContent>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-2">
+    <PageContent
+      title={division.name}
+      description={division.description ?? "Detail program untuk departemen ini."}
+      actions={<Badge variant="outline">{counts.programs} Program</Badge>}
+    >
+      <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Button
               variant="ghost"
@@ -166,22 +150,11 @@ export default function DivisionDetailPage() {
             </Button>
             <span>Departemen</span>
           </div>
-          <h1 className="text-3xl font-bold">{division.name}</h1>
-          {division.description && (
-            <p className="text-muted-foreground max-w-2xl">
-              {division.description}
-            </p>
-          )}
           {division.phoneNumber && (
             <p className="text-sm text-muted-foreground">
               Kontak: {division.phoneNumber}
             </p>
           )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {/* <Badge variant="outline">{counts.users} Anggota</Badge> */}
-          <Badge variant="outline">{counts.programs} Program</Badge>
-        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -354,6 +327,6 @@ export default function DivisionDetailPage() {
           )}
         </CardContent>
       </Card> */}
-    </div>
+    </PageContent>
   );
 }

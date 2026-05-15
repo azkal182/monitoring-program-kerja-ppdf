@@ -44,6 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageContent } from "@/components/dashboard/page-content";
 
 function formatMonthKey(date: Date) {
   return formatInJakarta(date, "yyyy-MM");
@@ -105,21 +106,18 @@ export default function DeadlinesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Deadline</h1>
-          <p className="text-muted-foreground">
-            Pantau target yang harus diselesaikan sebelum tanggal tertentu.
-          </p>
-        </div>
-        {isAdmin && (
-          <Button onClick={handleCreate}>
+    <PageContent
+      title="Deadline"
+      description="Pantau target yang harus diselesaikan sebelum tanggal tertentu."
+      actions={
+        isAdmin ? (
+          <Button onClick={handleCreate} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Tambah Deadline
           </Button>
-        )}
-      </div>
+        ) : null
+      }
+    >
 
       <Card>
         <CardHeader className="space-y-3">
@@ -176,8 +174,9 @@ export default function DeadlinesPage() {
             </div>
           ) : (
             <>
-              <div className="hidden md:block">
-                <Table>
+              <div className="hidden lg:block">
+                <div className="overflow-x-auto">
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tanggal</TableHead>
@@ -239,9 +238,10 @@ export default function DeadlinesPage() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
               </div>
 
-              <div className="grid gap-3 md:hidden">
+              <div className="grid gap-3 lg:hidden">
                 {deadlines?.map((deadline) => {
                   const daysRemaining = getDaysRemaining(deadline.dueDate, today);
                   return (
@@ -301,6 +301,6 @@ export default function DeadlinesPage() {
         onOpenChange={setDialogOpen}
         deadline={selectedDeadline}
       />
-    </div>
+    </PageContent>
   );
 }

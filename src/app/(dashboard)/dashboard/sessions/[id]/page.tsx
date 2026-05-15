@@ -22,6 +22,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PageContent } from "@/components/dashboard/page-content";
+import { EmptyState, LoadingState } from "@/components/dashboard/page-state";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -57,20 +59,14 @@ export default function SessionDetailPage() {
   const { data: session, isLoading } = useSessionDetail(sessionId);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingState label="Memuat detail sesi..." />;
   }
 
   if (!session) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          Sesi tidak ditemukan
-        </CardContent>
-      </Card>
+      <PageContent title="Detail Sesi">
+        <EmptyState title="Sesi tidak ditemukan" />
+      </PageContent>
     );
   }
 
@@ -81,21 +77,18 @@ export default function SessionDetailPage() {
       : session.documents.length > 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="outline" size="sm" asChild>
+    <PageContent
+      title={session.schedule.program.name}
+      description={session.schedule.program.division.name}
+      actions={
+        <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
           <Link href="/dashboard/schedules">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Kembali
           </Link>
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold">{session.schedule.program.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {session.schedule.program.division.name}
-          </p>
-        </div>
-      </div>
+      }
+    >
 
       <Card>
         <CardHeader className="pb-3">
@@ -190,6 +183,6 @@ export default function SessionDetailPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContent>
   );
 }

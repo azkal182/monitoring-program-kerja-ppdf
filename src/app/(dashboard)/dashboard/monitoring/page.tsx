@@ -43,6 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageContent } from "@/components/dashboard/page-content";
 
 const COLORS = {
   completed: "#22c55e",
@@ -106,15 +107,10 @@ export default function MonitoringPage() {
   }));
 
   return (
-    <div className="space-y-6">
-      {/* Header with Month Navigation */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Monitoring Program Kerja</h1>
-          <p className="text-muted-foreground">
-            {isAdmin ? "Semua Divisi" : `Divisi ${session?.user?.divisionName || ""}`}
-          </p>
-        </div>
+    <PageContent
+      title="Monitoring Program Kerja"
+      description={isAdmin ? "Semua divisi" : `Divisi ${session?.user?.divisionName || "-"}`}
+      actions={
         <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
           <Button
             variant="outline"
@@ -136,7 +132,8 @@ export default function MonitoringPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-      </div>
+      }
+    >
 
       {/* Overview Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -315,7 +312,7 @@ export default function MonitoringPage() {
         <CardContent>
           {stats.byProgram.length > 0 ? (
             <>
-              <div className="hidden md:block">
+              <div className="hidden lg:block">
                 <div className="overflow-x-auto">
                   <Table className="min-w-[700px]">
                     <TableHeader>
@@ -375,7 +372,7 @@ export default function MonitoringPage() {
                 </div>
               </div>
 
-              <div className="space-y-3 md:hidden">
+              <div className="space-y-3 lg:hidden">
                 {stats.byProgram.map((program) => (
                   <div
                     key={program.programId}
@@ -431,6 +428,6 @@ export default function MonitoringPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContent>
   );
 }

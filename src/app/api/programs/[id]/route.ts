@@ -65,7 +65,10 @@ export async function PUT(
 ) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    const canManagePrograms =
+      session?.user?.role === "ADMIN" || session?.user?.role === "KOORDINATOR";
+
+    if (!session?.user || !canManagePrograms) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -86,6 +89,7 @@ export async function PUT(
     const existingProgram = await prisma.program.findUnique({
       where: { id },
       select: {
+        divisionId: true,
         scheduleType: true,
         scheduleDays: true,
         scheduleMonthDays: true,
@@ -97,6 +101,19 @@ export async function PUT(
       return NextResponse.json(
         { error: "Program tidak ditemukan" },
         { status: 404 }
+      );
+    }
+
+    if (
+      session.user.role === "KOORDINATOR" &&
+      (!session.user.divisionId ||
+        existingProgram.divisionId !== session.user.divisionId ||
+        (data.divisionId !== undefined &&
+          data.divisionId !== session.user.divisionId))
+    ) {
+      return NextResponse.json(
+        { error: "Koordinator hanya dapat mengubah program divisinya sendiri" },
+        { status: 403 }
       );
     }
 
@@ -161,11 +178,37 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session?.user || session.user.role !== "ADMIN") {
+    const canManagePrograms =
+      session?.user?.role === "ADMIN" || session?.user?.role === "KOORDINATOR";
+
+    if (!session?.user || !canManagePrograms) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
+
+    const existingProgram = await prisma.program.findUnique({
+      where: { id },
+      select: { divisionId: true },
+    });
+
+    if (!existingProgram) {
+      return NextResponse.json(
+        { error: "Program tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    if (
+      session.user.role === "KOORDINATOR" &&
+      (!session.user.divisionId ||
+        existingProgram.divisionId !== session.user.divisionId)
+    ) {
+      return NextResponse.json(
+        { error: "Koordinator hanya dapat menghapus program divisinya sendiri" },
+        { status: 403 }
+      );
+    }
 
     await prisma.program.delete({
       where: { id },

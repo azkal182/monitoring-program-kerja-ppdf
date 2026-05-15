@@ -301,7 +301,7 @@ export function DashboardSidebar({
   }
 
   return (
-    <aside className="hidden h-screen w-64 flex-col border-r bg-card shadow-sm md:sticky md:top-0 md:flex">
+    <aside className="hidden h-screen w-64 flex-col border-r bg-card shadow-sm xl:sticky xl:top-0 xl:flex">
       <div className="flex h-16 items-center border-b px-4">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">

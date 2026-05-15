@@ -37,6 +37,7 @@ import {
   type CalendarProgramSummary,
 } from "@/hooks/use-calendar";
 import { cn } from "@/lib/utils";
+import { PageContent } from "@/components/dashboard/page-content";
 
 const SCHEDULE_LABEL: Record<string, string> = {
   DAILY: "Harian",
@@ -188,18 +189,16 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Kalender Program Kerja</h1>
-          <p className="text-sm text-muted-foreground">
-            {authSession?.user?.role === "ADMIN"
-              ? "Semua divisi"
-              : authSession?.user?.divisionName
-              ? `Divisi ${authSession.user.divisionName}`
-              : "Program yang terjadwal"}
-          </p>
-        </div>
+    <PageContent
+      title="Kalender Program Kerja"
+      description={
+        authSession?.user?.role === "ADMIN"
+          ? "Semua divisi"
+          : authSession?.user?.divisionName
+            ? `Divisi ${authSession.user.divisionName}`
+            : "Program yang terjadwal"
+      }
+      actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -239,7 +238,8 @@ export default function CalendarPage() {
               : "Tampilkan Program Harian"}
           </Button>
         </div>
-      </div>
+      }
+    >
 
       <div className="grid gap-6 lg:grid-cols-[380px,1fr]">
         <Card className="shadow-sm">
@@ -451,6 +451,6 @@ export default function CalendarPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContent>
   );
 }

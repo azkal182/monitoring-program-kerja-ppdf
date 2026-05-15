@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2, Plus, X, CalendarIcon } from "lucide-react";
@@ -82,7 +83,8 @@ const days = [
 const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
 
 const blankFormValues = (
-  defaultRequirement: RequirementType
+  defaultRequirement: RequirementType,
+  defaultDivisionId = ""
 ): ProgramFormValues => ({
   name: "",
   description: "",
@@ -94,14 +96,20 @@ const blankFormValues = (
   requirementType: defaultRequirement,
   minUploads: 1,
   isActive: true,
-  divisionId: "",
+  divisionId: defaultDivisionId,
 });
 
 export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDialogProps) {
   const isEditing = !!program;
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+  const ownDivisionId = session?.user?.divisionId ?? "";
   const createMutation = useCreateProgram();
   const updateMutation = useUpdateProgram();
   const { data: divisions } = useDivisions();
+  const availableDivisions = isAdmin
+    ? divisions
+    : divisions?.filter((division) => division.id === ownDivisionId);
   const [isLoading, setIsLoading] = useState(false);
 
   const defaultRequirement: RequirementType = "PHOTO";
@@ -135,9 +143,14 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
         divisionId: program.divisionId,
       });
     } else {
-      form.reset(blankFormValues(defaultRequirement));
+      form.reset(
+        blankFormValues(
+          defaultRequirement,
+          isAdmin ? "" : ownDivisionId
+        )
+      );
     }
-  }, [program, form, defaultRequirement]);
+  }, [program, form, defaultRequirement, isAdmin, ownDivisionId]);
 
   async function onSubmit(data: ProgramFormValues) {
     setIsLoading(true);
@@ -258,14 +271,18 @@ export function ProgramFormDialog({ open, onOpenChange, program }: ProgramFormDi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Divisi</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={!isAdmin}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih divisi" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {divisions?.map((division) => (
+                      {availableDivisions?.map((division) => (
                         <SelectItem key={division.id} value={division.id}>
                           {division.name}
                         </SelectItem>
