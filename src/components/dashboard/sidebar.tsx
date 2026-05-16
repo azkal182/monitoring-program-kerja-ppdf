@@ -33,6 +33,7 @@ type NavigationItem = {
   href: string;
   icon: typeof LayoutDashboard;
   adminOnly?: boolean;
+  roles?: Array<"ADMIN" | "KOORDINATOR" | "ANGGOTA">;
   badge?: string;
 };
 
@@ -51,6 +52,12 @@ const navigationGroups: NavigationGroup[] = [
         href: "/dashboard/monitoring-v2",
         icon: BarChart3,
         badge: "New",
+      },
+      {
+        name: "Laporan Hari Ini",
+        href: "/field/today",
+        icon: ClipboardList,
+        roles: ["KOORDINATOR"],
       },
     ],
   },
@@ -115,13 +122,17 @@ function NavItems({
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const role = session?.user?.role;
 
   return (
     <nav className={cn("space-y-6", className)}>
       {navigationGroups.map((group) => {
-        const visibleItems = group.items.filter(
-          (item) => !item.adminOnly || isAdmin,
-        );
+        const visibleItems = group.items.filter((item) => {
+          const passesAdminOnly = !item.adminOnly || isAdmin;
+          const passesRoleFilter =
+            !item.roles || (role ? item.roles.includes(role) : false);
+          return passesAdminOnly && passesRoleFilter;
+        });
 
         if (visibleItems.length === 0) return null;
 
