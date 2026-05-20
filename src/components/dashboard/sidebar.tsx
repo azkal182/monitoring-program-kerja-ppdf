@@ -55,7 +55,7 @@ const navigationGroups: NavigationGroup[] = [
       },
       {
         name: "Laporan Hari Ini",
-        href: "/field/today",
+        href: "/dashboard/today",
         icon: ClipboardList,
         roles: ["KOORDINATOR"],
       },

@@ -8,6 +8,7 @@ export interface Deadline {
   description: string | null;
   dueDate: string;
   divisionId: string | null;
+  customDivision: string | null;
   division?: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -18,6 +19,7 @@ export interface DeadlineInput {
   description?: string;
   dueDate: string; // yyyy-mm-dd
   divisionId?: string | null;
+  customDivision?: string | null;
 }
 
 interface FetchDeadlinesParams {

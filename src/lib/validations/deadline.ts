@@ -7,6 +7,7 @@ export const deadlineSchema = z.object({
   description: z.string().optional(),
   dueDate: z.string().regex(DATE_REGEX, "Format tanggal tidak valid"),
   divisionId: z.string().optional().nullable(),
+  customDivision: z.string().max(100, "Nama divisi maksimal 100 karakter").optional().nullable(),
 });
 
 export type DeadlineInput = z.infer<typeof deadlineSchema>;

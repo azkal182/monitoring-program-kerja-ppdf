@@ -197,7 +197,7 @@ export default function DeadlinesPage() {
                           </TableCell>
                           <TableCell>{deadline.title}</TableCell>
                           <TableCell>
-                            {deadline.division?.name ?? "Umum"}
+                            {deadline.customDivision ?? deadline.division?.name ?? "Umum"}
                           </TableCell>
                           <TableCell className="text-muted-foreground max-w-[360px]">
                             {deadline.description ? (
@@ -255,7 +255,7 @@ export default function DeadlinesPage() {
                             {deadline.title}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {formatDate(deadline.dueDate)} • {deadline.division?.name ?? "Umum"}
+                            {formatDate(deadline.dueDate)} • {deadline.customDivision ?? deadline.division?.name ?? "Umum"}
                           </p>
                           {deadline.description && (
                             <p className="text-sm text-muted-foreground line-clamp-2 break-words" title={deadline.description}>

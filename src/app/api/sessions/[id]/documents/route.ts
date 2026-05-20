@@ -4,13 +4,6 @@ import prisma from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/storage";
 import { formatBytes, getMaxUploadBytes } from "@/lib/uploads";
 
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/plain",
-];
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -79,9 +72,7 @@ export async function POST(
       );
     }
 
-    if (file.type && !ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: "Tipe file tidak didukung" }, { status: 400 });
-    }
+    // Tidak ada pembatasan tipe file — semua format diizinkan
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);

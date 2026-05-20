@@ -251,13 +251,15 @@ async function computeDailyStats({
 }
 
 function summarizeByDivision(stats: DailyMonitoringStats): DivisionSummary[] {
-  return stats.byDivision.map((div) => ({
-    divisionId: div.divisionId,
-    divisionName: div.divisionName,
-    completionRate: div.completionRate, // sudah integer 0..100
-    completed: div.completed,
-    total: div.total,
-  }));
+  return stats.byDivision
+    .map((div) => ({
+      divisionId: div.divisionId,
+      divisionName: div.divisionName,
+      completionRate: div.completionRate, // sudah integer 0..100
+      completed: div.completed,
+      total: div.total,
+    }))
+    .sort((a, b) => a.completionRate - b.completionRate);
 }
 
 export function buildWhatsappDailySummaryMessage(

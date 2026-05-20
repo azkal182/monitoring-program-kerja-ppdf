@@ -11,6 +11,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDate(date: Date | string): string {
+  // Jika string format "yyyy-MM-dd" (date-only), parse langsung tanpa konversi timezone
+  // agar tidak terjadi off-by-one karena UTC midnight → Jakarta
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split("-").map(Number);
+    return new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(
+      new Date(year, month - 1, day)
+    );
+  }
   return new Intl.DateTimeFormat("id-ID", {
     dateStyle: "long",
     timeZone: APP_TIME_ZONE,

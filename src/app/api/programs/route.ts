@@ -5,6 +5,13 @@ import { programSchema } from "@/lib/validations/program";
 import { startOfJakartaDayUtc } from "@/lib/timezone";
 import { parsePagination } from "@/lib/pagination";
 
+const SCHEDULE_TYPE_ORDER: Record<string, number> = {
+  DAILY: 0,
+  WEEKLY: 1,
+  MONTHLY: 2,
+  CUSTOM: 3,
+};
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -36,7 +43,18 @@ export async function GET(request: NextRequest) {
       orderBy: [{ division: { name: "asc" } }, { name: "asc" }],
     });
 
-    return NextResponse.json(programs);
+    const sorted = programs.sort((a, b) => {
+      const typeOrder =
+        (SCHEDULE_TYPE_ORDER[a.scheduleType] ?? 99) -
+        (SCHEDULE_TYPE_ORDER[b.scheduleType] ?? 99);
+      if (typeOrder !== 0) return typeOrder;
+      // secondary: division name, then program name (already from DB but preserve after sort)
+      const divOrder = a.division.name.localeCompare(b.division.name);
+      if (divOrder !== 0) return divOrder;
+      return a.name.localeCompare(b.name);
+    });
+
+    return NextResponse.json(sorted);
   } catch (error) {
     console.error("Error fetching programs:", error);
     return NextResponse.json(

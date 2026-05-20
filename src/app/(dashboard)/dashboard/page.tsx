@@ -54,13 +54,8 @@ async function getDeadlines(user?: {
   const monthEnd = endOfJakartaMonthUtc(new Date());
   const isAdmin = user?.role === "ADMIN";
 
-  const divisionFilter = (() => {
-    if (isAdmin) return {};
-    if (user?.divisionId) {
-      return { OR: [{ divisionId: user.divisionId }, { divisionId: null }] };
-    }
-    return { divisionId: null };
-  })();
+  // Semua user melihat semua deadline, admin bisa filter per divisi via halaman deadlines
+  const divisionFilter = {};
 
   return prisma.deadline.findMany({
     where: {
@@ -276,7 +271,7 @@ export default async function DashboardPage() {
                   <div className="font-medium">{deadline.title}</div>
                   <div className="text-xs text-muted-foreground">
                     {formatDate(deadline.dueDate)} •{" "}
-                    {deadline.division?.name ?? "Umum"}
+                    {(deadline as { customDivision?: string | null }).customDivision ?? deadline.division?.name ?? "Umum"}
                   </div>
                   {deadline.description && (
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">

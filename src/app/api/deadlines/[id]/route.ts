@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { deadlineSchema } from "@/lib/validations/deadline";
-import { startOfJakartaDayUtc } from "@/lib/timezone";
 
 export async function GET(
   request: NextRequest,
@@ -90,8 +89,10 @@ export async function PUT(
       data: {
         title: parsed.data.title,
         description: parsed.data.description,
-        dueDate: startOfJakartaDayUtc(parsed.data.dueDate),
+        // Simpan sebagai UTC noon agar PostgreSQL DATE menyimpan tanggal yang benar
+        dueDate: new Date(`${parsed.data.dueDate}T12:00:00Z`),
         divisionId,
+        customDivision: parsed.data.customDivision ?? null,
       },
       include: { division: { select: { id: true, name: true } } },
     });

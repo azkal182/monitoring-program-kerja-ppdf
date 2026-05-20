@@ -4,7 +4,6 @@ import prisma from "@/lib/prisma";
 import { deadlineSchema } from "@/lib/validations/deadline";
 import {
   endOfJakartaMonthUtc,
-  startOfJakartaDayUtc,
   startOfJakartaMonthUtc,
 } from "@/lib/timezone";
 
@@ -34,16 +33,8 @@ export async function GET(request: NextRequest) {
 
     const isAdmin = session.user.role === "ADMIN";
     const divisionFilter = (() => {
-      if (isAdmin) {
-        if (divisionParam) return { divisionId: divisionParam };
-        return {};
-      }
-      if (session.user.divisionId) {
-        return {
-          OR: [{ divisionId: session.user.divisionId }, { divisionId: null }],
-        };
-      }
-      return { divisionId: null };
+      if (isAdmin && divisionParam) return { divisionId: divisionParam };
+      return {};
     })();
 
     const deadlines = await prisma.deadline.findMany({
@@ -103,8 +94,10 @@ export async function POST(request: NextRequest) {
       data: {
         title: parsed.data.title,
         description: parsed.data.description,
-        dueDate: startOfJakartaDayUtc(parsed.data.dueDate),
+        // Simpan sebagai UTC noon agar PostgreSQL DATE menyimpan tanggal yang benar
+        dueDate: new Date(`${parsed.data.dueDate}T12:00:00Z`),
         divisionId,
+        customDivision: parsed.data.customDivision ?? null,
       },
       include: { division: { select: { id: true, name: true } } },
     });

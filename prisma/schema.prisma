@@ -63,14 +63,15 @@ model Division {
 }
 
 model Deadline {
-    id          String    @id @default(cuid())
-    title       String
-    description String?
-    dueDate     DateTime  @db.Date
-    divisionId  String?
-    division    Division? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @updatedAt
+    id             String    @id @default(cuid())
+    title          String
+    description    String?
+    dueDate        DateTime  @db.Date
+    divisionId     String?
+    division       Division? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+    customDivision String?
+    createdAt      DateTime  @default(now())
+    updatedAt      DateTime  @updatedAt
 
     @@index([dueDate])
     @@index([divisionId])

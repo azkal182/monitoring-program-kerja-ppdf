@@ -66,6 +66,18 @@ export function DeadlineFormDialog({
   const { data: divisions } = useDivisions();
   const [isLoading, setIsLoading] = useState(false);
 
+  // Tentukan nilai awal select divisi
+  function getInitialDivisionSelect(dl?: Deadline | null): string {
+    if (!dl) return "all";
+    if (dl.customDivision) return "custom";
+    if (dl.divisionId) return dl.divisionId;
+    return "all";
+  }
+
+  const [divisionSelect, setDivisionSelect] = useState<string>(() =>
+    getInitialDivisionSelect(deadline)
+  );
+
   const form = useForm<DeadlineInput>({
     resolver: zodResolver(deadlineSchema),
     defaultValues: {
@@ -73,26 +85,46 @@ export function DeadlineFormDialog({
       description: deadline?.description || "",
       dueDate: toDateInput(deadline?.dueDate) || "",
       divisionId: deadline?.divisionId || null,
+      customDivision: deadline?.customDivision || null,
     },
   });
 
   useEffect(() => {
     if (deadline) {
+      const sel = getInitialDivisionSelect(deadline);
+      setDivisionSelect(sel);
       form.reset({
         title: deadline.title,
         description: deadline.description || "",
         dueDate: toDateInput(deadline.dueDate),
         divisionId: deadline.divisionId || null,
+        customDivision: deadline.customDivision || null,
       });
     } else {
+      setDivisionSelect("all");
       form.reset({
         title: "",
         description: "",
         dueDate: "",
         divisionId: isAdmin ? null : session?.user?.divisionId ?? null,
+        customDivision: null,
       });
     }
   }, [deadline, form, isAdmin, session?.user?.divisionId]);
+
+  function handleDivisionSelectChange(value: string) {
+    setDivisionSelect(value);
+    if (value === "all") {
+      form.setValue("divisionId", null);
+      form.setValue("customDivision", null);
+    } else if (value === "custom") {
+      form.setValue("divisionId", null);
+      form.setValue("customDivision", "");
+    } else {
+      form.setValue("divisionId", value);
+      form.setValue("customDivision", null);
+    }
+  }
 
   async function onSubmit(data: DeadlineInput) {
     setIsLoading(true);
@@ -100,6 +132,7 @@ export function DeadlineFormDialog({
       const payload = deadlineSchema.parse({
         ...data,
         divisionId: isAdmin ? data.divisionId || null : session?.user?.divisionId,
+        customDivision: divisionSelect === "custom" ? (data.customDivision || null) : null,
       });
 
       if (isEditing && deadline) {
@@ -176,32 +209,43 @@ export function DeadlineFormDialog({
               )}
             />
             {isAdmin && (
+              <FormItem>
+                <FormLabel>Divisi (Opsional)</FormLabel>
+                <Select
+                  value={divisionSelect}
+                  onValueChange={handleDivisionSelectChange}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih divisi" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="all">Umum (Semua Divisi)</SelectItem>
+                    {divisions?.map((division) => (
+                      <SelectItem key={division.id} value={division.id}>
+                        {division.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Custom...</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+            {isAdmin && divisionSelect === "custom" && (
               <FormField
                 control={form.control}
-                name="divisionId"
+                name="customDivision"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Divisi (Opsional)</FormLabel>
-                    <Select
-                      value={field.value ?? "all"}
-                      onValueChange={(value) =>
-                        field.onChange(value === "all" ? null : value)
-                      }
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih divisi" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="all">Umum (Semua Divisi)</SelectItem>
-                        {divisions?.map((division) => (
-                          <SelectItem key={division.id} value={division.id}>
-                            {division.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Nama Divisi Custom</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Masukkan nama divisi..."
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

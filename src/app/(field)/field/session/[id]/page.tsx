@@ -442,7 +442,6 @@ export default function SessionDetailPage() {
               <form onSubmit={handleDocumentUpload} className="space-y-3">
                 <Input
                   type="file"
-                  accept=".pdf,.doc,.docx,.txt"
                   onChange={(e) => {
                     const file = e.target.files?.[0] ?? null;
                     setSelectedDocument(file || null);
