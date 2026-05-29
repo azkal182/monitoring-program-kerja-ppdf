@@ -48,15 +48,15 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseBucket = process.env.SUPABASE_STORAGE_BUCKET || "monitoring";
 
-const r2AccountId = process.env.R2_ACCOUNT_ID;
-const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID;
-const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-const r2Bucket = process.env.R2_BUCKET;
-const r2PublicUrl = process.env.R2_PUBLIC_URL; // e.g. https://pub-xxx.r2.dev or custom domain
-
-const storageDriver =
-  process.env.STORAGE_DRIVER ||
-  (r2AccountId && r2AccessKeyId ? "r2" : supabaseUrl ? "supabase" : "local");
+// Baca runtime — jangan cache di module scope agar selalu reflect nilai .env terkini
+function getStorageDriver(): string {
+  const driver = process.env.STORAGE_DRIVER;
+  if (driver) return driver;
+  const hasR2 = process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID;
+  if (hasR2) return "r2";
+  if (process.env.SUPABASE_URL) return "supabase";
+  return "local";
+}
 
 // ─── Local Adapter ─────────────────────────────────────────────────────────
 
@@ -169,26 +169,32 @@ class R2StorageAdapter implements StorageAdapter {
   private publicUrl: string;
 
   constructor() {
-    if (!r2AccountId || !r2AccessKeyId || !r2SecretAccessKey || !r2Bucket) {
+    const accountId = process.env.R2_ACCOUNT_ID;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const bucket = process.env.R2_BUCKET;
+    const publicUrl = process.env.R2_PUBLIC_URL;
+
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucket) {
       throw new Error(
         "R2 credentials are required: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET"
       );
     }
-    if (!r2PublicUrl) {
+    if (!publicUrl) {
       throw new Error(
         "R2_PUBLIC_URL is required (e.g. https://pub-xxx.r2.dev or custom domain)"
       );
     }
 
-    this.bucket = r2Bucket;
-    this.publicUrl = r2PublicUrl.replace(/\/$/, ""); // strip trailing slash
+    this.bucket = bucket;
+    this.publicUrl = publicUrl.replace(/\/$/, "");
 
     this.client = new S3Client({
       region: "auto",
-      endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`,
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: {
-        accessKeyId: r2AccessKeyId,
-        secretAccessKey: r2SecretAccessKey,
+        accessKeyId,
+        secretAccessKey,
       },
     });
   }
@@ -271,9 +277,11 @@ let storageAdapter: StorageAdapter | null = null;
 function resolveAdapter(): StorageAdapter {
   if (storageAdapter) return storageAdapter;
 
-  if (storageDriver === "r2") {
+  const driver = getStorageDriver();
+
+  if (driver === "r2") {
     storageAdapter = new R2StorageAdapter();
-  } else if (storageDriver === "supabase") {
+  } else if (driver === "supabase") {
     if (!supabaseUrl || !supabaseServiceRoleKey) {
       throw new Error(
         "Supabase credentials are required for supabase storage driver."
@@ -330,7 +338,7 @@ export async function deleteFile(storagePath: string): Promise<void> {
  * "proxy" jika driver lain (upload lewat server).
  */
 export function getUploadMode(): "signed" | "proxy" {
-  return storageDriver === "r2" ? "signed" : "proxy";
+  return getStorageDriver() === "r2" ? "signed" : "proxy";
 }
 
 export interface SignedUploadResult {
@@ -347,7 +355,7 @@ export async function generateSignedUpload(
   directory: string,
   fileName: string,
   contentType: string,
-  expiresIn = 300 // 5 menit
+  expiresIn = 300
 ): Promise<SignedUploadResult> {
   const adapter = resolveAdapter();
 
@@ -355,12 +363,16 @@ export async function generateSignedUpload(
     throw new Error("Signed upload tidak didukung untuk storage driver ini");
   }
 
+  const publicUrl = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+  if (!publicUrl) {
+    throw new Error("R2_PUBLIC_URL tidak dikonfigurasi");
+  }
+
   const extension = getExtensionFromContentType(contentType);
   const safeName = createSafeFileName(fileName, extension);
   const key = directory ? `${directory}/${safeName}` : safeName;
 
   const signedUrl = await adapter.getSignedUploadUrl(key, contentType, expiresIn);
-  const publicUrl = `${r2PublicUrl}/${key}`;
 
-  return { signedUrl, key, publicUrl };
+  return { signedUrl, key, publicUrl: `${publicUrl}/${key}` };
 }
