@@ -133,27 +133,31 @@ model Session {
 }
 
 model Photo {
-    id          String   @id @default(cuid())
+    id          String    @id @default(cuid())
     url         String
     caption     String?
-    storagePath String
+    storagePath String?
+    purgedAt    DateTime?
     sessionId   String
-    session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-    createdAt   DateTime @default(now())
+    session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+    createdAt   DateTime  @default(now())
 
     @@index([sessionId])
+    @@index([purgedAt])
 }
 
 model Document {
-    id          String   @id @default(cuid())
+    id          String    @id @default(cuid())
     url         String
     filename    String
-    storagePath String
+    storagePath String?
+    purgedAt    DateTime?
     sessionId   String
-    session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-    createdAt   DateTime @default(now())
+    session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+    createdAt   DateTime  @default(now())
 
     @@index([sessionId])
+    @@index([purgedAt])
 }
 
 model PushSubscription {

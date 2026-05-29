@@ -7,6 +7,7 @@ export interface SessionPhoto {
   id: string;
   url: string;
   caption: string | null;
+  purgedAt: string | null;
   createdAt: string;
 }
 
@@ -14,6 +15,7 @@ export interface SessionDocument {
   id: string;
   url: string;
   filename: string;
+  purgedAt: string | null;
   createdAt: string;
 }
 

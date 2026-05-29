@@ -4,6 +4,11 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+import {
   compressImage,
   isImageBuffer,
   type CompressImageOptions,
@@ -35,12 +40,23 @@ interface StorageAdapter {
   delete(storagePath: string): Promise<void>;
 }
 
+// ─── Config ────────────────────────────────────────────────────────────────
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseBucket = process.env.SUPABASE_STORAGE_BUCKET || "monitoring";
+
+const r2AccountId = process.env.R2_ACCOUNT_ID;
+const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID;
+const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+const r2Bucket = process.env.R2_BUCKET;
+const r2PublicUrl = process.env.R2_PUBLIC_URL; // e.g. https://pub-xxx.r2.dev or custom domain
+
 const storageDriver =
   process.env.STORAGE_DRIVER ||
-  (supabaseUrl && supabaseServiceRoleKey ? "supabase" : "local");
+  (r2AccountId && r2AccessKeyId ? "r2" : supabaseUrl ? "supabase" : "local");
+
+// ─── Local Adapter ─────────────────────────────────────────────────────────
 
 class LocalStorageAdapter implements StorageAdapter {
   private baseDir: string;
@@ -94,6 +110,8 @@ class LocalStorageAdapter implements StorageAdapter {
   }
 }
 
+// ─── Supabase Adapter ──────────────────────────────────────────────────────
+
 class SupabaseStorageAdapter implements StorageAdapter {
   private bucket: string;
   private client = createClient(supabaseUrl!, supabaseServiceRoleKey!, {
@@ -141,6 +159,76 @@ class SupabaseStorageAdapter implements StorageAdapter {
   }
 }
 
+// ─── Cloudflare R2 Adapter ─────────────────────────────────────────────────
+
+class R2StorageAdapter implements StorageAdapter {
+  private client: S3Client;
+  private bucket: string;
+  private publicUrl: string;
+
+  constructor() {
+    if (!r2AccountId || !r2AccessKeyId || !r2SecretAccessKey || !r2Bucket) {
+      throw new Error(
+        "R2 credentials are required: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET"
+      );
+    }
+    if (!r2PublicUrl) {
+      throw new Error(
+        "R2_PUBLIC_URL is required (e.g. https://pub-xxx.r2.dev or custom domain)"
+      );
+    }
+
+    this.bucket = r2Bucket;
+    this.publicUrl = r2PublicUrl.replace(/\/$/, ""); // strip trailing slash
+
+    this.client = new S3Client({
+      region: "auto",
+      endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: r2AccessKeyId,
+        secretAccessKey: r2SecretAccessKey,
+      },
+    });
+  }
+
+  async upload({
+    buffer,
+    contentType,
+    directory,
+    fileName,
+  }: UploadOptions): Promise<UploadResult> {
+    const extension = getExtensionFromContentType(contentType);
+    const safeName = createSafeFileName(fileName, extension);
+    const key = directory ? `${directory}/${safeName}` : safeName;
+
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      })
+    );
+
+    return {
+      url: `${this.publicUrl}/${key}`,
+      storagePath: key,
+    };
+  }
+
+  async delete(storagePath: string): Promise<void> {
+    if (!storagePath) return;
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: storagePath,
+      })
+    );
+  }
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
 function createSafeFileName(fileName: string | undefined, extension: string) {
   if (fileName) {
     const hasExt = path.extname(fileName);
@@ -165,15 +253,19 @@ function getExtensionFromContentType(contentType: string) {
   return map[contentType] || "";
 }
 
+// ─── Resolver ──────────────────────────────────────────────────────────────
+
 let storageAdapter: StorageAdapter | null = null;
 
 function resolveAdapter(): StorageAdapter {
   if (storageAdapter) return storageAdapter;
 
-  if (storageDriver === "supabase") {
+  if (storageDriver === "r2") {
+    storageAdapter = new R2StorageAdapter();
+  } else if (storageDriver === "supabase") {
     if (!supabaseUrl || !supabaseServiceRoleKey) {
       throw new Error(
-        "Supabase credentials are required for supabase storage driver.",
+        "Supabase credentials are required for supabase storage driver."
       );
     }
     storageAdapter = new SupabaseStorageAdapter(supabaseBucket);
@@ -184,8 +276,10 @@ function resolveAdapter(): StorageAdapter {
   return storageAdapter;
 }
 
+// ─── Public API ────────────────────────────────────────────────────────────
+
 export async function uploadFile(
-  options: UploadOptions,
+  options: UploadOptions
 ): Promise<UploadResult> {
   const adapter = resolveAdapter();
 
@@ -198,10 +292,9 @@ export async function uploadFile(
     try {
       const compressed = await compressImage(
         options.buffer,
-        options.compressionOptions || { quality: 80 },
+        options.compressionOptions || { quality: 80 }
       );
 
-      // Use compressed buffer and update content type if format changed
       return adapter.upload({
         ...options,
         buffer: compressed.buffer,
@@ -209,7 +302,6 @@ export async function uploadFile(
       });
     } catch (error) {
       console.error("Image compression failed, uploading original:", error);
-      // Fallback to original if compression fails
       return adapter.upload(options);
     }
   }

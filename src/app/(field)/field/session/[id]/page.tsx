@@ -17,6 +17,7 @@ import {
   X,
   FileText,
   Download,
+  Trash2,
 } from "lucide-react";
 
 import { useSession, useSubmitSession } from "@/hooks/use-sessions";
@@ -338,28 +339,39 @@ export default function SessionDetailPage() {
                     key={photo.id}
                     className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
                   >
-                    <img
-                      src={photo.url}
-                      alt={photo.caption || "Photo"}
-                      className="w-full h-full object-cover"
-                    />
-                    {!isSubmitted && (
-                      <button
-                        onClick={() => handleDeletePhoto(photo.id)}
-                        disabled={deletingPhotoId === photo.id}
-                        className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        {deletingPhotoId === photo.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <X className="h-3 w-3" />
-                        )}
-                      </button>
-                    )}
-                    {photo.caption && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1.5 line-clamp-1">
-                        {photo.caption}
+                    {photo.purgedAt ? (
+                      // Placeholder untuk file yang sudah dihapus otomatis
+                      <div className="flex flex-col items-center justify-center w-full h-full bg-muted text-muted-foreground p-2 text-center">
+                        <Trash2 className="h-6 w-6 mb-1 opacity-50" />
+                        <p className="text-xs leading-tight">File dihapus otomatis</p>
+                        <p className="text-xs opacity-60">({">"} 30 hari)</p>
                       </div>
+                    ) : (
+                      <>
+                        <img
+                          src={photo.url}
+                          alt={photo.caption || "Photo"}
+                          className="w-full h-full object-cover"
+                        />
+                        {!isSubmitted && (
+                          <button
+                            onClick={() => handleDeletePhoto(photo.id)}
+                            disabled={deletingPhotoId === photo.id}
+                            className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            {deletingPhotoId === photo.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <X className="h-3 w-3" />
+                            )}
+                          </button>
+                        )}
+                        {photo.caption && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1.5 line-clamp-1">
+                            {photo.caption}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 ))}
@@ -411,14 +423,24 @@ export default function SessionDetailPage() {
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{doc.filename}</span>
+                      {doc.purgedAt && (
+                        <span className="text-xs text-muted-foreground italic">
+                          (file dihapus otomatis)
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" asChild>
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4" />
-                        </a>
-                      </Button>
-                      {!isSubmitted && (
+                      {!doc.purgedAt && (
+                        <Button variant="ghost" size="icon" asChild>
+                          <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                      {doc.purgedAt && (
+                        <Trash2 className="h-4 w-4 text-muted-foreground opacity-50" />
+                      )}
+                      {!isSubmitted && !doc.purgedAt && (
                         <Button
                           variant="ghost"
                           size="icon"
