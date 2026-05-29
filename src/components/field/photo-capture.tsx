@@ -33,7 +33,6 @@ export function PhotoCaptureDialog({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   const startCamera = useCallback(async () => {
@@ -115,15 +114,13 @@ export function PhotoCaptureDialog({
   const handleSubmit = async () => {
     if (!capturedImage) return;
 
-    setIsLoading(true);
+    // Tutup dialog segera agar progress bar di halaman terlihat
+    handleOpenChange(false);
+
     try {
       await onCapture(capturedImage, caption);
-      handleOpenChange(false);
-      toast.success("Foto berhasil diupload");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal upload foto");
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // Error sudah ditangani di hook (ditampilkan via UploadProgress)
     }
   };
 
@@ -211,14 +208,13 @@ export function PhotoCaptureDialog({
               <Button
                 variant="outline"
                 onClick={retakePhoto}
-                disabled={isLoading}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Ambil Ulang
               </Button>
-              <Button onClick={handleSubmit} disabled={isLoading}>
+              <Button onClick={handleSubmit}>
                 <Check className="mr-2 h-4 w-4" />
-                {isLoading ? "Uploading..." : "Simpan"}
+                Simpan
               </Button>
             </>
           )}

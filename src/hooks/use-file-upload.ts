@@ -138,7 +138,43 @@ function xhrUpload(
   });
 }
 
-// ─── Retry dengan exponential backoff ──────────────────────────────────────
+// ─── Mapping error ke pesan yang informatif untuk user ─────────────────────
+
+function toUserMessage(err: unknown, context: "compress" | "sign" | "upload" | "confirm", type: "photo" | "document"): string {
+  const raw = err instanceof Error ? err.message : "";
+  const label = type === "photo" ? "foto" : "dokumen";
+
+  // Pesan spesifik dari server (sudah dalam Bahasa Indonesia)
+  if (raw && !raw.startsWith("HTTP") && !raw.includes("Network") && !raw.includes("fetch")) {
+    return raw;
+  }
+
+  switch (context) {
+    case "compress":
+      if (raw.includes("Canvas")) return "Perangkat tidak mendukung kompresi gambar. Coba gunakan browser lain.";
+      return "Gagal memproses gambar. Pastikan file tidak rusak dan coba lagi.";
+
+    case "sign":
+      if (raw.includes("HTTP 401") || raw.includes("Unauthorized")) return "Sesi login habis. Silakan muat ulang halaman.";
+      if (raw.includes("HTTP 403")) return `Anda tidak memiliki akses untuk mengupload ${label} ini.`;
+      if (raw.includes("HTTP 400")) return raw; // pesan validasi dari server sudah jelas
+      if (raw.includes("HTTP 5")) return "Server sedang bermasalah. Coba lagi dalam beberapa saat.";
+      if (raw.includes("Network") || raw.includes("fetch")) return "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
+      return `Gagal mempersiapkan upload ${label}. Coba lagi.`;
+
+    case "upload":
+      if (raw.includes("HTTP 403")) return "Akses ke storage ditolak. Hubungi administrator.";
+      if (raw.includes("HTTP 5")) return "Storage sedang bermasalah. Coba lagi dalam beberapa saat.";
+      if (raw.includes("Network") || raw.includes("abort")) return "Koneksi terputus saat mengupload. Periksa internet dan coba lagi.";
+      return `Gagal mengupload ${label} ke server. Periksa koneksi dan coba lagi.`;
+
+    case "confirm":
+      if (raw.includes("HTTP 401")) return "Sesi login habis. Silakan muat ulang halaman.";
+      if (raw.includes("HTTP 5")) return `${label.charAt(0).toUpperCase() + label.slice(1)} sudah terupload tapi gagal disimpan. Coba lagi.`;
+      if (raw.includes("Network") || raw.includes("fetch")) return `${label.charAt(0).toUpperCase() + label.slice(1)} sudah terupload tapi koneksi terputus saat menyimpan. Coba lagi.`;
+      return `Gagal menyimpan data ${label}. Coba lagi.`;
+  }
+}
 
 function isRetriableError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -211,7 +247,11 @@ export function useFileUpload({
         setState({ status: "compressing", progress: 0, error: null, canRetry: false });
         let fileToUpload = file;
         if (file.type.startsWith("image/")) {
-          fileToUpload = await compressImageClient(file);
+          try {
+            fileToUpload = await compressImageClient(file);
+          } catch (err) {
+            throw new Error(toUserMessage(err, "compress", "photo"));
+          }
         }
 
         if (signal.aborted) return;
@@ -219,74 +259,87 @@ export function useFileUpload({
         // 2. Minta signed URL dari server
         setState({ status: "uploading", progress: 0, error: null, canRetry: false });
 
-        const signRes = await withRetry(
-          () =>
-            fetch(`/api/sessions/${sessionId}/photos/sign`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                fileName: fileToUpload.name,
-                contentType: fileToUpload.type || "image/jpeg",
-                fileSize: fileToUpload.size,
+        let signRes: { signedUrl: string; key: string; publicUrl: string };
+        try {
+          signRes = await withRetry(
+            () =>
+              fetch(`/api/sessions/${sessionId}/photos/sign`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  fileName: fileToUpload.name,
+                  contentType: fileToUpload.type || "image/jpeg",
+                  fileSize: fileToUpload.size,
+                }),
+                signal,
+              }).then(async (r) => {
+                if (!r.ok) {
+                  const err = await r.json();
+                  throw new Error(err.error || `HTTP ${r.status}`);
+                }
+                return r.json() as Promise<{ signedUrl: string; key: string; publicUrl: string }>;
               }),
-              signal,
-            }).then(async (r) => {
-              if (!r.ok) {
-                const err = await r.json();
-                throw new Error(err.error || `HTTP ${r.status}`);
-              }
-              return r.json() as Promise<{ signedUrl: string; key: string; publicUrl: string }>;
-            }),
-          maxRetries
-        );
+            maxRetries
+          );
+        } catch (err) {
+          throw new Error(toUserMessage(err, "sign", "photo"));
+        }
 
         if (signal.aborted) return;
 
         // 3. Upload langsung ke R2 via XHR
-        await withRetry(
-          () =>
-            xhrUpload(
-              signRes.signedUrl,
-              fileToUpload,
-              fileToUpload.type || "image/jpeg",
-              (percent) =>
-                setState((s) => ({ ...s, status: "uploading", progress: percent })),
-              signal
-            ),
-          maxRetries
-        );
+        try {
+          await withRetry(
+            () =>
+              xhrUpload(
+                signRes.signedUrl,
+                fileToUpload,
+                fileToUpload.type || "image/jpeg",
+                (percent) =>
+                  setState((s) => ({ ...s, status: "uploading", progress: percent })),
+                signal
+              ),
+            maxRetries
+          );
+        } catch (err) {
+          throw new Error(toUserMessage(err, "upload", "photo"));
+        }
 
         if (signal.aborted) return;
 
         // 4. Confirm ke server → simpan ke DB
         setState((s) => ({ ...s, status: "confirming", progress: 100 }));
 
-        await withRetry(
-          () =>
-            fetch(`/api/sessions/${sessionId}/photos/confirm`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                key: signRes.key,
-                publicUrl: signRes.publicUrl,
-                caption,
+        try {
+          await withRetry(
+            () =>
+              fetch(`/api/sessions/${sessionId}/photos/confirm`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  key: signRes.key,
+                  publicUrl: signRes.publicUrl,
+                  caption,
+                }),
+                signal,
+              }).then(async (r) => {
+                if (!r.ok) {
+                  const err = await r.json();
+                  throw new Error(err.error || `HTTP ${r.status}`);
+                }
+                return r.json();
               }),
-              signal,
-            }).then(async (r) => {
-              if (!r.ok) {
-                const err = await r.json();
-                throw new Error(err.error || `HTTP ${r.status}`);
-              }
-              return r.json();
-            }),
-          maxRetries
-        );
+            maxRetries
+          );
+        } catch (err) {
+          throw new Error(toUserMessage(err, "confirm", "photo"));
+        }
 
         setState({ status: "done", progress: 100, error: null, canRetry: false });
         onSuccess?.();
       } catch (err) {
         if ((err as Error).message === "Upload dibatalkan") return;
-        const message = err instanceof Error ? err.message : "Gagal upload foto";
+        const message = err instanceof Error ? err.message : "Gagal upload foto. Coba lagi.";
         setState({ status: "error", progress: 0, error: message, canRetry: true });
       }
     },
@@ -303,74 +356,87 @@ export function useFileUpload({
         // 1. Minta signed URL
         setState({ status: "uploading", progress: 0, error: null, canRetry: false });
 
-        const signRes = await withRetry(
-          () =>
-            fetch(`/api/sessions/${sessionId}/documents/sign`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                fileName: file.name,
-                contentType: file.type || "application/octet-stream",
-                fileSize: file.size,
+        let signRes: { signedUrl: string; key: string; publicUrl: string };
+        try {
+          signRes = await withRetry(
+            () =>
+              fetch(`/api/sessions/${sessionId}/documents/sign`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  fileName: file.name,
+                  contentType: file.type || "application/octet-stream",
+                  fileSize: file.size,
+                }),
+                signal,
+              }).then(async (r) => {
+                if (!r.ok) {
+                  const err = await r.json();
+                  throw new Error(err.error || `HTTP ${r.status}`);
+                }
+                return r.json() as Promise<{ signedUrl: string; key: string; publicUrl: string }>;
               }),
-              signal,
-            }).then(async (r) => {
-              if (!r.ok) {
-                const err = await r.json();
-                throw new Error(err.error || `HTTP ${r.status}`);
-              }
-              return r.json() as Promise<{ signedUrl: string; key: string; publicUrl: string }>;
-            }),
-          maxRetries
-        );
+            maxRetries
+          );
+        } catch (err) {
+          throw new Error(toUserMessage(err, "sign", "document"));
+        }
 
         if (signal.aborted) return;
 
         // 2. Upload ke R2
-        await withRetry(
-          () =>
-            xhrUpload(
-              signRes.signedUrl,
-              file,
-              file.type || "application/octet-stream",
-              (percent) =>
-                setState((s) => ({ ...s, status: "uploading", progress: percent })),
-              signal
-            ),
-          maxRetries
-        );
+        try {
+          await withRetry(
+            () =>
+              xhrUpload(
+                signRes.signedUrl,
+                file,
+                file.type || "application/octet-stream",
+                (percent) =>
+                  setState((s) => ({ ...s, status: "uploading", progress: percent })),
+                signal
+              ),
+            maxRetries
+          );
+        } catch (err) {
+          throw new Error(toUserMessage(err, "upload", "document"));
+        }
 
         if (signal.aborted) return;
 
         // 3. Confirm
         setState((s) => ({ ...s, status: "confirming", progress: 100 }));
 
-        await withRetry(
-          () =>
-            fetch(`/api/sessions/${sessionId}/documents/confirm`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                key: signRes.key,
-                publicUrl: signRes.publicUrl,
-                displayName: displayName || file.name,
+        try {
+          await withRetry(
+            () =>
+              fetch(`/api/sessions/${sessionId}/documents/confirm`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  key: signRes.key,
+                  publicUrl: signRes.publicUrl,
+                  displayName: displayName || file.name,
+                }),
+                signal,
+              }).then(async (r) => {
+                if (!r.ok) {
+                  const err = await r.json();
+                  throw new Error(err.error || `HTTP ${r.status}`);
+                }
+                return r.json();
               }),
-              signal,
-            }).then(async (r) => {
-              if (!r.ok) {
-                const err = await r.json();
-                throw new Error(err.error || `HTTP ${r.status}`);
-              }
-              return r.json();
-            }),
-          maxRetries
-        );
+            maxRetries
+          );
+        } catch (err) {
+          throw new Error(toUserMessage(err, "confirm", "document"));
+        }
 
         setState({ status: "done", progress: 100, error: null, canRetry: false });
         onSuccess?.();
       } catch (err) {
         if ((err as Error).message === "Upload dibatalkan") return;
-        const message = err instanceof Error ? err.message : "Gagal upload dokumen";
+        const message = err instanceof Error ? err.message : "Gagal upload dokumen. Coba lagi.";
         setState({ status: "error", progress: 0, error: message, canRetry: true });
       }
     },
