@@ -183,3 +183,9 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(150%); }
+  100% { transform: translateX(150%); }
+}

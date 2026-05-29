@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { useSession, useSubmitSession } from "@/hooks/use-sessions";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { RequirementType } from "@/hooks/use-programs";
 import { formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,8 +51,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PhotoCaptureDialog } from "@/components/field/photo-capture";
+import { UploadProgress } from "@/components/field/upload-progress";
 import { Input } from "@/components/ui/input";
 
+// Konversi data URL (dari kamera) ke File object
 function dataUrlToFile(dataUrl: string, filename: string): File {
   const [header, data] = dataUrl.split(",");
   const mimeMatch = header.match(/:(.*?);/);
@@ -84,55 +87,49 @@ export default function SessionDetailPage() {
   const [photoCaptureOpen, setPhotoCaptureOpen] = useState(false);
   const [hasIssue, setHasIssue] = useState(false);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
-  const [uploadingDoc, setUploadingDoc] = useState(false);
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
   const [documentName, setDocumentName] = useState("");
+  const docFormRef = useRef<HTMLFormElement>(null);
+
+  // Hook upload dengan progress + retry
+  const photoUpload = useFileUpload({ sessionId, type: "photo" });
+  const docUpload = useFileUpload({ sessionId, type: "document" });
 
   const form = useForm<SubmitInput>({
     resolver: zodResolver(submitSchema),
-    defaultValues: {
-      status: "COMPLETED",
-      issueNote: "",
-    },
+    defaultValues: { status: "COMPLETED", issueNote: "" },
   });
+
+  // ── Handler foto ──────────────────────────────────────────────────────────
 
   async function handlePhotoCapture(imageData: string, caption: string) {
     const file = dataUrlToFile(imageData, `photo-${Date.now()}.jpg`);
-    const formData = new FormData();
-    formData.append("file", file);
-    if (caption) {
-      formData.append("caption", caption);
-    }
 
-    const res = await fetch(`/api/sessions/${sessionId}/photos`, {
-      method: "POST",
-      body: formData,
+    await photoUpload.uploadPhoto({
+      file,
+      caption,
+      onSuccess: async () => {
+        toast.success("Foto berhasil diupload");
+        await refetch();
+        // Reset state upload setelah selesai agar bisa upload lagi
+        setTimeout(() => photoUpload.reset(), 1500);
+      },
     });
-
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || "Failed to upload photo");
-    }
-
-    await refetch();
   }
 
   async function handleDeletePhoto(photoId: string) {
     if (!confirm("Hapus foto ini?")) return;
-
     setDeletingPhotoId(photoId);
     try {
       const res = await fetch(
         `/api/sessions/${sessionId}/photos?photoId=${photoId}`,
         { method: "DELETE" }
       );
-
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to delete photo");
       }
-
       toast.success("Foto berhasil dihapus");
       await refetch();
     } catch (error) {
@@ -142,58 +139,41 @@ export default function SessionDetailPage() {
     }
   }
 
-  async function handleDocumentUpload(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // ── Handler dokumen ───────────────────────────────────────────────────────
+
+  async function handleDocumentUpload(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     if (!selectedDocument) {
       toast.error("Pilih dokumen terlebih dahulu");
       return;
     }
 
-    setUploadingDoc(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedDocument);
-      if (documentName.trim()) {
-        formData.append("name", documentName.trim());
-      }
-
-      const res = await fetch(`/api/sessions/${sessionId}/documents`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to upload document");
-      }
-
-      toast.success("Dokumen berhasil diupload");
-      setSelectedDocument(null);
-      setDocumentName("");
-      (event.currentTarget as HTMLFormElement).reset();
-      await refetch();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal upload dokumen");
-    } finally {
-      setUploadingDoc(false);
-    }
+    await docUpload.uploadDocument({
+      file: selectedDocument,
+      displayName: documentName.trim() || selectedDocument.name,
+      onSuccess: async () => {
+        toast.success("Dokumen berhasil diupload");
+        setSelectedDocument(null);
+        setDocumentName("");
+        docFormRef.current?.reset();
+        await refetch();
+        setTimeout(() => docUpload.reset(), 1500);
+      },
+    });
   }
 
   async function handleDeleteDocument(documentId: string) {
     if (!confirm("Hapus dokumen ini?")) return;
-
     setDeletingDocumentId(documentId);
     try {
       const res = await fetch(
         `/api/sessions/${sessionId}/documents?documentId=${documentId}`,
         { method: "DELETE" }
       );
-
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to delete document");
       }
-
       toast.success("Dokumen berhasil dihapus");
       await refetch();
     } catch (error) {
@@ -203,19 +183,19 @@ export default function SessionDetailPage() {
     }
   }
 
+  // ── Submit sesi ───────────────────────────────────────────────────────────
+
   async function onSubmit(data: SubmitInput) {
     try {
       if (data.status === "COMPLETED_WITH_ISSUE" && !data.issueNote?.trim()) {
         toast.error("Catatan kendala wajib diisi");
         return;
       }
-
       await submitMutation.mutateAsync({
         id: sessionId,
         status: data.status,
         issueNote: data.status === "COMPLETED_WITH_ISSUE" ? data.issueNote : undefined,
       });
-
       toast.success("Sesi berhasil disubmit!");
       setSubmitDialogOpen(false);
       await refetch();
@@ -230,10 +210,12 @@ export default function SessionDetailPage() {
     setSubmitDialogOpen(true);
   }
 
+  // ── Loading / not found ───────────────────────────────────────────────────
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
@@ -258,12 +240,18 @@ export default function SessionDetailPage() {
   const documentCount = session.documents.length;
   const proofCount = requirementType === "PHOTO" ? photoCount : documentCount;
   const canSubmit = !isSubmitted && proofCount >= minUploads;
-
   const requirementLabel = requirementType === "PHOTO" ? "Foto" : "Dokumen";
+
+  const isPhotoUploading = ["compressing", "uploading", "confirming"].includes(
+    photoUpload.state.status
+  );
+  const isDocUploading = ["uploading", "confirming"].includes(
+    docUpload.state.status
+  );
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* ── Header ── */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
@@ -299,7 +287,8 @@ export default function SessionDetailPage() {
             <Clock className="h-4 w-4" />
             <span>
               Mulai: {formatTime(session.startedAt)}
-              {session.submittedAt && ` • Selesai: ${formatTime(session.submittedAt)}`}
+              {session.submittedAt &&
+                ` • Selesai: ${formatTime(session.submittedAt)}`}
             </span>
           </div>
           {session.issueNote && (
@@ -311,7 +300,8 @@ export default function SessionDetailPage() {
         </CardContent>
       </Card>
 
-      {requirementType === "PHOTO" ? (
+      {/* ── Foto ── */}
+      {requirementType === "PHOTO" && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -321,7 +311,7 @@ export default function SessionDetailPage() {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {session.photos.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed rounded-lg">
                 <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-2" />
@@ -340,11 +330,10 @@ export default function SessionDetailPage() {
                     className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
                   >
                     {photo.purgedAt ? (
-                      // Placeholder untuk file yang sudah dihapus otomatis
                       <div className="flex flex-col items-center justify-center w-full h-full bg-muted text-muted-foreground p-2 text-center">
                         <Trash2 className="h-6 w-6 mb-1 opacity-50" />
                         <p className="text-xs leading-tight">File dihapus otomatis</p>
-                        <p className="text-xs opacity-60">({">"} 30 hari)</p>
+                        <p className="text-xs opacity-60">(&gt; 30 hari)</p>
                       </div>
                     ) : (
                       <>
@@ -378,26 +367,39 @@ export default function SessionDetailPage() {
               </div>
             )}
 
+            {/* Progress bar foto */}
+            {photoUpload.state.status !== "idle" && (
+              <UploadProgress
+                state={photoUpload.state}
+                onRetry={photoUpload.retry}
+                onCancel={photoUpload.cancel}
+              />
+            )}
+
             {!isSubmitted && (
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setPhotoCaptureOpen(true)}
-                >
-                  <Camera className="mr-2 h-4 w-4" />
-                  Ambil / Upload Foto
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setPhotoCaptureOpen(true)}
+                disabled={isPhotoUploading}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Ambil / Upload Foto
+              </Button>
             )}
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {/* ── Dokumen ── */}
+      {requirementType === "DOCUMENT" && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Dokumen Bukti</CardTitle>
-              <Badge variant={documentCount >= minUploads ? "default" : "secondary"}>
+              <Badge
+                variant={documentCount >= minUploads ? "default" : "secondary"}
+              >
                 {documentCount}/{minUploads} dokumen
               </Badge>
             </div>
@@ -420,19 +422,23 @@ export default function SessionDetailPage() {
                     key={doc.id}
                     className="flex items-center justify-between rounded-md border p-3 text-sm"
                   >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{doc.filename}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="font-medium truncate">{doc.filename}</span>
                       {doc.purgedAt && (
-                        <span className="text-xs text-muted-foreground italic">
-                          (file dihapus otomatis)
+                        <span className="text-xs text-muted-foreground italic shrink-0">
+                          (dihapus otomatis)
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 shrink-0">
                       {!doc.purgedAt && (
                         <Button variant="ghost" size="icon" asChild>
-                          <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <Download className="h-4 w-4" />
                           </a>
                         </Button>
@@ -460,10 +466,24 @@ export default function SessionDetailPage() {
               </div>
             )}
 
+            {/* Progress bar dokumen */}
+            {docUpload.state.status !== "idle" && (
+              <UploadProgress
+                state={docUpload.state}
+                onRetry={docUpload.retry}
+                onCancel={docUpload.cancel}
+              />
+            )}
+
             {!isSubmitted && (
-              <form onSubmit={handleDocumentUpload} className="space-y-3">
+              <form
+                ref={docFormRef}
+                onSubmit={handleDocumentUpload}
+                className="space-y-3"
+              >
                 <Input
                   type="file"
+                  disabled={isDocUploading}
                   onChange={(e) => {
                     const file = e.target.files?.[0] ?? null;
                     setSelectedDocument(file || null);
@@ -473,10 +493,15 @@ export default function SessionDetailPage() {
                 <Input
                   placeholder="Nama dokumen (opsional)"
                   value={documentName}
+                  disabled={isDocUploading}
                   onChange={(e) => setDocumentName(e.target.value)}
                 />
-                <Button type="submit" className="w-full" disabled={!selectedDocument || uploadingDoc}>
-                  {uploadingDoc ? (
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={!selectedDocument || isDocUploading}
+                >
+                  {isDocUploading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Mengunggah...
@@ -491,7 +516,7 @@ export default function SessionDetailPage() {
         </Card>
       )}
 
-      {/* Submit Actions */}
+      {/* ── Submit Actions ── */}
       {!isSubmitted && (
         <div className="space-y-2">
           <Button
@@ -515,13 +540,14 @@ export default function SessionDetailPage() {
           </Button>
           {!canSubmit && (
             <p className="text-xs text-center text-muted-foreground">
-              Upload minimal {minUploads} {requirementLabel.toLowerCase()} untuk dapat submit
+              Upload minimal {minUploads}{" "}
+              {requirementLabel.toLowerCase()} untuk dapat submit
             </p>
           )}
         </div>
       )}
 
-      {/* Photo Capture Dialog */}
+      {/* ── Photo Capture Dialog ── */}
       {requirementType === "PHOTO" && (
         <PhotoCaptureDialog
           open={photoCaptureOpen}
@@ -530,7 +556,7 @@ export default function SessionDetailPage() {
         />
       )}
 
-      {/* Submit Dialog */}
+      {/* ── Submit Dialog ── */}
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -540,7 +566,7 @@ export default function SessionDetailPage() {
             <DialogDescription>
               {hasIssue
                 ? "Jelaskan kendala yang terjadi saat pelaksanaan"
-                : "Pastikan semua foto sudah diupload sebelum submit"}
+                : "Pastikan semua bukti sudah diupload sebelum submit"}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>

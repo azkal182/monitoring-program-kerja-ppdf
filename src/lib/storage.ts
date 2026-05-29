@@ -8,6 +8,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   compressImage,
   isImageBuffer,
@@ -38,6 +39,7 @@ export interface UploadResult {
 interface StorageAdapter {
   upload(options: UploadOptions): Promise<UploadResult>;
   delete(storagePath: string): Promise<void>;
+  getSignedUploadUrl?(key: string, contentType: string, expiresIn: number): Promise<string>;
 }
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -225,6 +227,15 @@ class R2StorageAdapter implements StorageAdapter {
       })
     );
   }
+
+  async getSignedUploadUrl(key: string, contentType: string, expiresIn: number): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+    return getSignedUrl(this.client, command, { expiresIn });
+  }
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -312,4 +323,44 @@ export async function uploadFile(
 export async function deleteFile(storagePath: string): Promise<void> {
   const adapter = resolveAdapter();
   await adapter.delete(storagePath);
+}
+
+/**
+ * Return "signed" jika driver R2 (upload langsung dari browser ke R2),
+ * "proxy" jika driver lain (upload lewat server).
+ */
+export function getUploadMode(): "signed" | "proxy" {
+  return storageDriver === "r2" ? "signed" : "proxy";
+}
+
+export interface SignedUploadResult {
+  signedUrl: string;
+  key: string;
+  publicUrl: string;
+}
+
+/**
+ * Generate presigned PUT URL untuk upload langsung dari browser ke R2.
+ * Hanya tersedia jika STORAGE_DRIVER=r2.
+ */
+export async function generateSignedUpload(
+  directory: string,
+  fileName: string,
+  contentType: string,
+  expiresIn = 300 // 5 menit
+): Promise<SignedUploadResult> {
+  const adapter = resolveAdapter();
+
+  if (!adapter.getSignedUploadUrl) {
+    throw new Error("Signed upload tidak didukung untuk storage driver ini");
+  }
+
+  const extension = getExtensionFromContentType(contentType);
+  const safeName = createSafeFileName(fileName, extension);
+  const key = directory ? `${directory}/${safeName}` : safeName;
+
+  const signedUrl = await adapter.getSignedUploadUrl(key, contentType, expiresIn);
+  const publicUrl = `${r2PublicUrl}/${key}`;
+
+  return { signedUrl, key, publicUrl };
 }
