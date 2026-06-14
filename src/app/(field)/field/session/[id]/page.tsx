@@ -53,6 +53,7 @@ import {
 import { PhotoCaptureDialog } from "@/components/field/photo-capture";
 import { UploadProgress } from "@/components/field/upload-progress";
 import { Input } from "@/components/ui/input";
+import { DOCUMENT_ACCEPT } from "@/lib/document-file-types";
 
 // Konversi data URL (dari kamera) ke File object
 function dataUrlToFile(dataUrl: string, filename: string): File {
@@ -483,6 +484,7 @@ export default function SessionDetailPage() {
               >
                 <Input
                   type="file"
+                  accept={DOCUMENT_ACCEPT}
                   disabled={isDocUploading}
                   onChange={(e) => {
                     const file = e.target.files?.[0] ?? null;

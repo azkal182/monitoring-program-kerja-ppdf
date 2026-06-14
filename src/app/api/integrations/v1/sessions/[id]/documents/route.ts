@@ -2,17 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/storage";
 import { formatBytes, getMaxUploadBytes } from "@/lib/uploads";
+import { isAllowedDocumentFile } from "@/lib/document-file-types";
 import {
   authenticateIntegrationClient,
   isDivisionAllowed,
 } from "@/lib/integration-auth";
-
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/plain",
-];
 
 export async function POST(
   request: NextRequest,
@@ -79,8 +73,11 @@ export async function POST(
       );
     }
 
-    if (file.type && !ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: "Tipe file tidak didukung" }, { status: 400 });
+    if (!isAllowedDocumentFile(file)) {
+      return NextResponse.json(
+        { error: "File harus berupa PDF, Word, Excel, PowerPoint, atau gambar" },
+        { status: 400 },
+      );
     }
 
     const arrayBuffer = await file.arrayBuffer();

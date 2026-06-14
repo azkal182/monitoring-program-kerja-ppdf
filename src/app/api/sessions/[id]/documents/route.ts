@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/storage";
 import { formatBytes, getMaxUploadBytes } from "@/lib/uploads";
+import { isAllowedDocumentFile } from "@/lib/document-file-types";
 
 export async function POST(
   request: NextRequest,
@@ -72,7 +73,12 @@ export async function POST(
       );
     }
 
-    // Tidak ada pembatasan tipe file — semua format diizinkan
+    if (!isAllowedDocumentFile(file)) {
+      return NextResponse.json(
+        { error: "File harus berupa PDF, Word, Excel, PowerPoint, atau gambar" },
+        { status: 400 }
+      );
+    }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
