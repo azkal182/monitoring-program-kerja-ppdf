@@ -31,6 +31,7 @@ Optional (recommended):
 - `CRON_SECRET` - Bearer token to protect cron endpoints.
 - `MAX_UPLOAD_MB` - Maximum upload size in MB (default: 10).
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` - Web push configuration.
+- `SCHEDULE_REMINDER_LEAD_MINUTES`, `SCHEDULE_REMINDER_LATE_TOLERANCE_MINUTES` - Window pengingat jadwal otomatis (default: 30 menit sebelum jadwal, toleransi 5 menit setelah jadwal).
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` - Supabase storage driver.
 - `INTEGRATION_CLIENTS_JSON` - Konfigurasi API key integrasi per divisi (lihat `docs/integration-api.md`).
 

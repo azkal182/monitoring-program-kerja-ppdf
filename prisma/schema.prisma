@@ -100,15 +100,17 @@ model Program {
 }
 
 model ScheduleInstance {
-    id        String    @id @default(cuid())
-    date      DateTime  @db.Date
-    programId String
-    program   Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
-    sessions  Session[]
-    createdAt DateTime  @default(now())
+    id             String    @id @default(cuid())
+    date           DateTime  @db.Date
+    programId      String
+    program        Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+    sessions       Session[]
+    reminderSentAt DateTime?
+    createdAt      DateTime  @default(now())
 
     @@unique([programId, date])
     @@index([date])
+    @@index([reminderSentAt])
 }
 
 model Session {
