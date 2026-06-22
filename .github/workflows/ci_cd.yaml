@@ -89,38 +89,37 @@ jobs:
 
       - name: Create .env file
         run: |
-          rm -f .env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          echo "AUTH_SECRET=${{ secrets.AUTH_SECRET }}" >> .env
-          echo "AUTH_URL=${{ secrets.AUTH_URL }}" >> .env
-          echo "NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}" >> .env
+          cat > .env <<'EOF'
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+          AUTH_URL=${{ secrets.AUTH_URL }}
+          NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
 
-          echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" >> .env
-          echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .env
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
 
-          echo "STORAGE_DRIVER=${{ secrets.STORAGE_DRIVER }}" >> .env
-          echo "LOCAL_STORAGE_DIR=${{ secrets.LOCAL_STORAGE_DIR }}" >> .env
+          STORAGE_DRIVER=${{ secrets.STORAGE_DRIVER }}
+          LOCAL_STORAGE_DIR=${{ secrets.LOCAL_STORAGE_DIR }}
 
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
-          echo "SUPABASE_STORAGE_BUCKET=${{ secrets.SUPABASE_STORAGE_BUCKET }}" >> .env
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_STORAGE_BUCKET=${{ secrets.SUPABASE_STORAGE_BUCKET }}
 
-          echo "R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}" >> .env
-          echo "R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}" >> .env
-          echo "R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}" >> .env
-          echo "R2_BUCKET=${{ secrets.R2_BUCKET }}" >> .env
-          echo "R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}" >> .env
-          echo "INTEGRATION_CLIENTS_JSON=${{ secrets.INTEGRATION_CLIENTS_JSON }}" >> .env
+          R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET=${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}
 
-          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
-          echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
+          INTEGRATION_CLIENTS_JSON='${{ secrets.INTEGRATION_CLIENTS_JSON }}'
 
-          echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> .env
+          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}
 
-          echo "HUSKY=0" >> .env
-          # echo "NODE_ENV=production" >> .env
-          # echo "NEXT_PUBLIC_IS_PRODUCTION=production" >> .env
-          echo "NEXT_PUBLIC_APP_VERSION=${{ needs.start_notify.outputs.project_version || '1.0.0' }}" >> .env
+          SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+          HUSKY=0
+          NEXT_PUBLIC_APP_VERSION=${{ needs.start_notify.outputs.project_version || '1.0.0' }}
+          EOF
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -228,7 +227,9 @@ jobs:
           echo "R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}" >> .env
           echo "R2_BUCKET=${{ secrets.R2_BUCKET }}" >> .env
           echo "R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}" >> .env
-          echo "INTEGRATION_CLIENTS_JSON=${{ secrets.INTEGRATION_CLIENTS_JSON }}" >> .env
+          cat >> .env <<'ENVEOF'
+          INTEGRATION_CLIENTS_JSON='${{ secrets.INTEGRATION_CLIENTS_JSON }}'
+          ENVEOF
 
           echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
           echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
