@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { format, subDays, addDays, subMonths, addMonths } from "date-fns";
 import { id } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Download } from "lucide-react";
 
 import { useDailyMonitoring, useMonthlyMonitoring } from "@/hooks/use-monitoring-v2";
 import { QuickStats } from "@/components/monitoring/quick-stats";
@@ -67,30 +68,61 @@ export default function MonitoringV2Page() {
 
       {/* Period Toggle */}
       <Tabs value={period} onValueChange={(v) => setPeriod(v as "daily" | "monthly")}>
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <TabsList>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="daily">Harian</TabsTrigger>
             <TabsTrigger value="monthly">Bulanan</TabsTrigger>
           </TabsList>
 
           {/* Date/Month Navigation */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handlePrevious}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePrevious}
+                className="shrink-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
 
-            <div className="flex items-center gap-2 min-w-[200px] sm:min-w-[280px] justify-center">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm sm:text-base">{displayDate}</span>
+              <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 sm:min-w-[280px] sm:border-0 sm:px-0 sm:py-0">
+                <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate text-sm font-medium sm:text-base">
+                  {displayDate}
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleNext}
+                className="shrink-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
 
-            <Button variant="outline" size="icon" onClick={handleNext}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-
             {period === "daily" && (
-              <Button variant="outline" size="sm" onClick={handleToday}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToday}
+                className="w-full sm:w-auto"
+              >
                 Hari Ini
+              </Button>
+            )}
+            {period === "monthly" && (
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+                <Link
+                  href={`/api/reports/monthly/pdf?month=${monthStr}`}
+                  target="_blank"
+                  className="justify-center"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export PDF
+                </Link>
               </Button>
             )}
           </div>
