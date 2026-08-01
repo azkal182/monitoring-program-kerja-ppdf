@@ -43,6 +43,7 @@ interface FetchProgramsParams {
   isActive?: boolean;
   limit?: number;
   offset?: number;
+  scheduleTypes?: ScheduleType[];
 }
 
 async function fetchPrograms(params?: FetchProgramsParams): Promise<Program[]> {
@@ -54,6 +55,8 @@ async function fetchPrograms(params?: FetchProgramsParams): Promise<Program[]> {
     searchParams.set("limit", String(params.limit));
   if (typeof params?.offset === "number")
     searchParams.set("offset", String(params.offset));
+  if (params?.scheduleTypes?.length)
+    searchParams.set("scheduleTypes", params.scheduleTypes.join(","));
 
   const res = await fetch(`/api/programs?${searchParams}`);
   if (!res.ok) throw new Error("Failed to fetch programs");

@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const divisionId = searchParams.get("divisionId");
     const isActive = searchParams.get("isActive");
+    const scheduleTypesStr = searchParams.get("scheduleTypes");
+    const scheduleTypes = scheduleTypesStr ? scheduleTypesStr.split(",") : null;
     const { take, skip } = parsePagination(searchParams);
 
     // Non-admin users can only see their division's programs
@@ -33,6 +35,7 @@ export async function GET(request: NextRequest) {
         ...(divisionId && { divisionId }),
         ...(userDivisionId && { divisionId: userDivisionId }),
         ...(isActive !== null && { isActive: isActive === "true" }),
+        ...(scheduleTypes && { scheduleType: { in: scheduleTypes as any[] } }),
       },
       include: {
         division: { select: { id: true, name: true } },

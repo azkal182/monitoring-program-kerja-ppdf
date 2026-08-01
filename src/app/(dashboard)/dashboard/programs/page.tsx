@@ -10,6 +10,7 @@ import {
   Clock,
   Camera,
   FileText,
+  Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
@@ -39,6 +40,7 @@ import {
 } from "@/components/ui/table";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -65,18 +67,16 @@ export default function ProgramsPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("all");
+  const [selectedScheduleTypes, setSelectedScheduleTypes] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const { data: divisions } = useDivisions();
-  const { data: programs, isLoading } = usePrograms(
-    selectedDivisionId !== "all"
-      ? {
-          divisionId: selectedDivisionId,
-          limit: pageSize,
-          offset: (page - 1) * pageSize,
-        }
-      : { limit: pageSize, offset: (page - 1) * pageSize }
-  );
+  const { data: programs, isLoading } = usePrograms({
+    ...(selectedDivisionId !== "all" && { divisionId: selectedDivisionId }),
+    ...(selectedScheduleTypes.length > 0 && { scheduleTypes: selectedScheduleTypes as any[] }),
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  });
   const deleteMutation = useDeleteProgram();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
@@ -141,6 +141,40 @@ export default function ProgramsPage() {
               </SelectContent>
             </Select>
           )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter Tipe Jadwal
+                {selectedScheduleTypes.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 rounded-sm px-1 font-normal">
+                    {selectedScheduleTypes.length}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {Object.entries(scheduleTypeLabels).map(([key, label]) => (
+                <DropdownMenuCheckboxItem
+                  key={key}
+                  checked={selectedScheduleTypes.includes(key)}
+                  onSelect={(e) => e.preventDefault()}
+                  onCheckedChange={(checked) => {
+                    setSelectedScheduleTypes((prev) =>
+                      checked
+                        ? [...prev, key]
+                        : prev.filter((t) => t !== key)
+                    );
+                    setPage(1);
+                  }}
+                >
+                  {label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button onClick={handleCreate} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Tambah Program
