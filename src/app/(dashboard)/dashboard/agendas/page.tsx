@@ -67,10 +67,22 @@ const AgendasPage = () => {
   const [selectedQuarterId, setSelectedQuarterId] = useState<
     string | undefined
   >();
+  const [selectedMonth, setSelectedMonth] = useState<string>(() =>
+    String(new Date().getMonth() + 1).padStart(2, "0")
+  );
 
   const currentQuarterId = selectedQuarterId ?? quarters?.[0]?.id;
 
   const selectedQuarter = quarters?.find((q) => q.id === currentQuarterId);
+
+  const filteredAgendas = agendas?.filter((agenda) => {
+    const matchQuarter = currentQuarterId
+      ? agenda.quarterId === currentQuarterId
+      : true;
+    const matchMonth =
+      selectedMonth === "all" ? true : agenda.date.slice(5, 7) === selectedMonth;
+    return matchQuarter && matchMonth;
+  });
 
   const handleDelete = async (id: string, name: string) => {
     const confirmed = await confirm({
@@ -173,6 +185,32 @@ const AgendasPage = () => {
                 </Select>
               </div>
             )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Bulan</span>
+              <Select
+                value={selectedMonth}
+                onValueChange={(value) => setSelectedMonth(value)}
+              >
+                <SelectTrigger className="h-9 w-44">
+                  <SelectValue placeholder="Semua Bulan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Bulan</SelectItem>
+                  <SelectItem value="01">Januari</SelectItem>
+                  <SelectItem value="02">Februari</SelectItem>
+                  <SelectItem value="03">Maret</SelectItem>
+                  <SelectItem value="04">April</SelectItem>
+                  <SelectItem value="05">Mei</SelectItem>
+                  <SelectItem value="06">Juni</SelectItem>
+                  <SelectItem value="07">Juli</SelectItem>
+                  <SelectItem value="08">Agustus</SelectItem>
+                  <SelectItem value="09">September</SelectItem>
+                  <SelectItem value="10">Oktober</SelectItem>
+                  <SelectItem value="11">November</SelectItem>
+                  <SelectItem value="12">Desember</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -191,7 +229,7 @@ const AgendasPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {agendas?.map((agenda, index) => (
+                {filteredAgendas?.map((agenda, index) => (
                   <TableRow key={agenda.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="capitalize font-medium">
@@ -253,7 +291,7 @@ const AgendasPage = () => {
 
           {/* ───── Mobile: Cards ───── */}
           <div className="flex flex-col gap-3 lg:hidden">
-            {agendas?.map((agenda, index) => (
+            {filteredAgendas?.map((agenda, index) => (
               <div
                 key={agenda.id}
                 className="rounded-xl border bg-card p-4 shadow-sm space-y-3"
@@ -323,7 +361,7 @@ const AgendasPage = () => {
             ))}
 
             {/* Empty state */}
-            {(!agendas || agendas.length === 0) && (
+            {(!filteredAgendas || filteredAgendas.length === 0) && (
               <p className="text-center text-sm text-muted-foreground py-8">
                 Belum ada agenda.
               </p>
