@@ -58,10 +58,8 @@ jobs:
         with:
           node-version: '24.x'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9.15.2
+      - name: Enable Corepack
+        run: corepack enable pnpm
 
       - name: Cache pnpm store
         uses: actions/cache@v3
@@ -247,18 +245,12 @@ jobs:
 
           nvm use 24
           node -v
+          corepack enable pnpm
           pnpm -v
 
 
           # install prod deps
-          if command -v pnpm >/dev/null 2>&1; then
-            pnpm install --frozen-lockfile
-            # pnpm install --production
-          else
-            npm i -g pnpm
-            pnpm install --frozen-lockfile
-            # pnpm install --production
-          fi
+          pnpm install --frozen-lockfile
 
           # restart pm2
           echo "🔄 Restarting PM2 process..."
