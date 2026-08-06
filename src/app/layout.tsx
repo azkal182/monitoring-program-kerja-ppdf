@@ -12,6 +12,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Monitoring Program Kerja",
   description: "Aplikasi monitoring program kerja berbasis bukti dan terukur",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico?v=2", rel: "icon" },
+      { url: "/favicon.svg?v=2", rel: "icon", type: "image/svg+xml" },
+    ],
+    apple: "/apple-icon.png?v=2",
+  },
 };
 
 export default function RootLayout({
