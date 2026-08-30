@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -200,9 +201,20 @@ export function DashboardUserMenu({
   buttonClassName,
 }: DashboardUserMenuProps) {
   const { data: session } = useSession();
+  const { cleanupCurrentDevice } = usePushNotifications();
   const user = session?.user;
 
   if (!user) return null;
+
+  const handleSignOut = async () => {
+    try {
+      await cleanupCurrentDevice();
+    } catch {
+      // ignore cleanup error and continue sign out
+    }
+
+    await signOut({ callbackUrl: "/login" });
+  };
 
   const initials = user.name
     ?.split(" ")
@@ -256,7 +268,7 @@ export function DashboardUserMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => void handleSignOut()}
           className="text-destructive focus:text-destructive"
         >
           <LogOut className="mr-2 h-4 w-4" />

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { ArrowLeft, LogOut, Menu, UserCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +22,17 @@ export default function FieldLayout({
   children: React.ReactNode;
 }) {
   const { data: session } = useSession();
+  const { cleanupCurrentDevice } = usePushNotifications();
+
+  const handleSignOut = async () => {
+    try {
+      await cleanupCurrentDevice();
+    } catch {
+      // ignore cleanup error and continue sign out
+    }
+
+    await signOut({ callbackUrl: "/login" });
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 to-slate-100">
@@ -53,7 +65,7 @@ export default function FieldLayout({
                     <Button
                       variant="destructive"
                       className="w-full"
-                      onClick={() => signOut({ callbackUrl: "/login" })}
+                      onClick={() => void handleSignOut()}
                     >
                       <LogOut className="mr-2 h-4 w-4" /> Keluar
                     </Button>
@@ -103,7 +115,7 @@ export default function FieldLayout({
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
+                <DropdownMenuItem onClick={() => void handleSignOut()}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Keluar
                 </DropdownMenuItem>

@@ -168,12 +168,17 @@ model PushSubscription {
     p256dh         String
     authKey        String
     expirationTime DateTime?
+    deviceId       String?
+    isActive       Boolean   @default(true)
+    lastSeenAt     DateTime?
     userId         String?
     user           User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
     createdAt      DateTime  @default(now())
     updatedAt      DateTime  @updatedAt
 
     @@index([userId])
+    @@index([deviceId])
+    @@index([isActive])
 }
 
 model Quarter {

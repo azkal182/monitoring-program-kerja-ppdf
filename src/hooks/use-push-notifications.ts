@@ -3,6 +3,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+const DEVICE_ID_KEY = "push-device-id";
+
+function getOrCreateDeviceId() {
+  if (typeof window === "undefined") return null;
+
+  const existing = window.localStorage.getItem(DEVICE_ID_KEY);
+  if (existing) return existing;
+
+  const generated =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `device-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  window.localStorage.setItem(DEVICE_ID_KEY, generated);
+  return generated;
+}
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -20,7 +36,8 @@ function urlBase64ToUint8Array(base64String: string) {
 async function sendSubscriptionToServer(
   endpoint: string,
   payload: PushSubscriptionJSON | null,
-  method: "POST" | "DELETE"
+  method: "POST" | "DELETE",
+  deviceId?: string | null
 ) {
   const response = await fetch("/api/push/subscriptions", {
     method,
@@ -29,9 +46,10 @@ async function sendSubscriptionToServer(
     },
     body: JSON.stringify(
       method === "POST"
-        ? { subscription: payload }
+        ? { subscription: payload, deviceId }
         : {
             endpoint,
+            deviceId,
           }
     ),
   });
@@ -56,6 +74,7 @@ export interface UsePushNotificationsResult {
   error: string | null;
   subscribe: () => Promise<void>;
   unsubscribe: () => Promise<void>;
+  cleanupCurrentDevice: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -158,8 +177,9 @@ export function usePushNotifications(): UsePushNotificationsResult {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
 
+      const deviceId = getOrCreateDeviceId();
       setSubscription(sub);
-      await sendSubscriptionToServer(sub.endpoint, sub.toJSON(), "POST");
+      await sendSubscriptionToServer(sub.endpoint, sub.toJSON(), "POST", deviceId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal melakukan subscribe notifikasi");
       throw err;
@@ -174,7 +194,8 @@ export function usePushNotifications(): UsePushNotificationsResult {
     setError(null);
 
     try {
-      await sendSubscriptionToServer(subscription.endpoint, null, "DELETE");
+      const deviceId = getOrCreateDeviceId();
+      await sendSubscriptionToServer(subscription.endpoint, null, "DELETE", deviceId);
       await subscription.unsubscribe();
       setSubscription(null);
     } catch (err) {
@@ -185,6 +206,23 @@ export function usePushNotifications(): UsePushNotificationsResult {
     }
   }, [subscription]);
 
+  const cleanupCurrentDevice = useCallback(async () => {
+    const deviceId = getOrCreateDeviceId();
+    if (!deviceId) return;
+
+    try {
+      await fetch("/api/push/subscriptions", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deviceId }),
+      });
+    } catch {
+      // ignore cleanup errors on logout; we still want signout to proceed
+    }
+  }, []);
+
   return useMemo(
     () => ({
       isSupported,
@@ -194,8 +232,9 @@ export function usePushNotifications(): UsePushNotificationsResult {
       error,
       subscribe,
       unsubscribe,
+      cleanupCurrentDevice,
       refresh,
     }),
-    [isSupported, isLoading, subscription, permission, error, subscribe, unsubscribe, refresh]
+    [isSupported, isLoading, subscription, permission, error, subscribe, unsubscribe, cleanupCurrentDevice, refresh]
   );
 }

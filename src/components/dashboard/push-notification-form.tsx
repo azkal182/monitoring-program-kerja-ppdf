@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,72 @@ function formatAudienceLabel(audience: "all" | "user", selectedUser?: PushSubscr
   return `${selectedUser.name} (@${selectedUser.username})`;
 }
 
+function getDeviceGuidance() {
+  if (typeof navigator === "undefined") {
+    return {
+      label: "Perangkat ini",
+      guide: "Buka pengaturan browser untuk mengaktifkan notifikasi.",
+    };
+  }
+
+  const ua = navigator.userAgent;
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPad|iPhone|iPod/i.test(ua);
+  const isMac = /Mac/i.test(ua);
+  const isWindows = /Win/i.test(ua);
+  const isChrome = /Chrome/i.test(ua) && !/Edg|OPR/i.test(ua);
+  const isEdge = /Edg/i.test(ua);
+  const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Chromium/i.test(ua);
+  const isFirefox = /Firefox/i.test(ua);
+
+  let browser = "browser";
+  if (isChrome) browser = "Chrome";
+  else if (isEdge) browser = "Edge";
+  else if (isSafari) browser = "Safari";
+  else if (isFirefox) browser = "Firefox";
+
+  let device = "desktop";
+  if (isAndroid) device = "Android";
+  else if (isIOS) device = "iPhone / iPad";
+  else if (isMac) device = "Mac";
+  else if (isWindows) device = "Windows";
+
+  const label = `${browser} di ${device}`;
+
+  if (isAndroid) {
+    return {
+      label,
+      guide: "Buka Chrome → ⋮ → Pengaturan → Situs web → Notifikasi → Izinkan.",
+    };
+  }
+
+  if (isIOS) {
+    return {
+      label,
+      guide: "Buka Pengaturan → Safari → Notifikasi → Izinkan untuk situs ini.",
+    };
+  }
+
+  if (isChrome || isEdge) {
+    return {
+      label,
+      guide: "Klik ikon kunci di address bar → Pengaturan situs → Notifikasi → Izinkan.",
+    };
+  }
+
+  if (isSafari) {
+    return {
+      label,
+      guide: "Buka Safari → Preferensi → Situs web → Notifikasi → Izinkan untuk situs ini.",
+    };
+  }
+
+  return {
+    label,
+    guide: "Buka pengaturan browser dan aktifkan izin notifikasi untuk situs ini.",
+  };
+}
+
 export function PushNotificationPanel() {
   const { data, isLoading, error } = usePushAdminSummary();
   const sendMutation = useSendPushNotification();
@@ -43,8 +109,6 @@ export function PushNotificationPanel() {
     refresh,
   } = usePushNotifications();
 
-  const autoRequestRef = useRef(false);
-
   const [audience, setAudience] = useState<"all" | "user">("all");
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState("Pengumuman Program Kerja");
@@ -54,16 +118,6 @@ export function PushNotificationPanel() {
   const selectedUser = audience === "user"
     ? data?.subscribers.find((subscriber) => subscriber.userId === selectedUserId) ?? null
     : null;
-
-  useEffect(() => {
-    if (!isSupported) return;
-    if (permission !== "default") return;
-    if (autoRequestRef.current) return;
-    autoRequestRef.current = true;
-    subscribe().catch(() => {
-      // user gesture required or dismissed; fall back to manual button
-    });
-  }, [isSupported, permission, subscribe]);
 
   const isSubscribed = Boolean(subscription);
 
@@ -91,6 +145,14 @@ export function PushNotificationPanel() {
       : permission === "denied"
       ? "Ditolak"
       : "Belum diminta";
+
+  const deviceGuidance = getDeviceGuidance();
+  const permissionGuide =
+    permission === "denied"
+      ? `Status saat ini: izin notifikasi ditolak di ${deviceGuidance.label}. ${deviceGuidance.guide}`
+      : permission === "granted"
+        ? `Device aktif: ${deviceGuidance.label}. Notifikasi akan masuk ke perangkat ini saat jadwal atau update penting tersedia.`
+        : `Device aktif: ${deviceGuidance.label}. Klik tombol di bawah untuk menampilkan permintaan izin terlebih dahulu.`;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -136,6 +198,11 @@ export function PushNotificationPanel() {
                       ? "Izin ditolak. Buka pengaturan notifikasi browser dan izinkan situs ini, lalu coba aktifkan kembali."
                       : "Klik tombol di samping untuk menampilkan permintaan izin notifikasi."}
                   </p>
+                  <div className="mt-3 rounded-md border border-dashed bg-muted/40 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground">Panduan perangkat</p>
+                    <p className="mt-1">{deviceGuidance.label}</p>
+                    <p className="mt-1">{permissionGuide}</p>
+                  </div>
                   {pushError && (
                     <p className="mt-2 text-xs text-destructive">{pushError}</p>
                   )}

@@ -11,6 +11,7 @@ const subscriptionSchema = z.object({
     auth: z.string().min(1),
   }),
   expirationTime: z.number().nullable().optional(),
+  deviceId: z.string().min(1).optional(),
 });
 
 export async function GET(request: Request) {
@@ -99,36 +100,62 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const parseResult = subscriptionSchema.safeParse(
+  const rawPayload =
     json && typeof json === "object" && json !== null && "subscription" in json
-      ? (json as { subscription: unknown }).subscription
-      : json
-  );
+      ? (json as { subscription: unknown; deviceId?: string }).subscription
+      : json;
+
+  const rawDeviceId =
+    json && typeof json === "object" && json !== null && "deviceId" in json
+      ? String((json as { deviceId?: unknown }).deviceId ?? "").trim()
+      : "";
+
+  const parseResult = subscriptionSchema.safeParse(rawPayload);
 
   if (!parseResult.success) {
     return NextResponse.json({ error: "Invalid subscription payload" }, { status: 400 });
   }
 
   const subscription = parseResult.data;
+  const normalizedDeviceId = rawDeviceId || subscription.deviceId?.trim() || undefined;
 
   try {
-    // Prisma type definitions might require regeneration after schema change
+    const payload = {
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      authKey: subscription.keys.auth,
+      expirationTime: subscription.expirationTime
+        ? new Date(subscription.expirationTime)
+        : null,
+      userId: session.user.id,
+      deviceId: normalizedDeviceId,
+      isActive: true,
+      lastSeenAt: new Date(),
+    };
+
+    if (normalizedDeviceId) {
+      await (prisma.pushSubscription as any).updateMany({
+        where: {
+          deviceId: normalizedDeviceId,
+          userId: { not: session.user.id },
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+          userId: null,
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    // Prisma type definitions might require regeneration after schema change.
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     await prisma.pushSubscription.upsert({
       where: { endpoint: subscription.endpoint },
-      create: {
-        endpoint: subscription.endpoint,
-        p256dh: subscription.keys.p256dh,
-        authKey: subscription.keys.auth,
-        expirationTime: subscription.expirationTime ? new Date(subscription.expirationTime) : null,
-        userId: session.user.id,
-      },
+      create: payload,
       update: {
-        p256dh: subscription.keys.p256dh,
-        authKey: subscription.keys.auth,
-        expirationTime: subscription.expirationTime ? new Date(subscription.expirationTime) : null,
-        userId: session.user.id,
+        ...payload,
         updatedAt: new Date(),
       },
     });
@@ -141,7 +168,8 @@ export async function POST(request: Request) {
 }
 
 const deleteSchema = z.object({
-  endpoint: z.string().min(1),
+  endpoint: z.string().min(1).optional(),
+  deviceId: z.string().min(1).optional(),
 });
 
 export async function DELETE(request: Request) {
@@ -163,14 +191,25 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const { endpoint } = parseResult.data;
+  const { endpoint, deviceId } = parseResult.data;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    await prisma.pushSubscription.delete({
-      where: { endpoint },
-    });
+    if (endpoint) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      await prisma.pushSubscription.delete({
+        where: { endpoint },
+      });
+    }
+
+    if (deviceId) {
+      await (prisma.pushSubscription as any).deleteMany({
+        where: {
+          deviceId,
+          userId: session.user.id,
+        },
+      });
+    }
   } catch {
     // ignore missing entries
   }
