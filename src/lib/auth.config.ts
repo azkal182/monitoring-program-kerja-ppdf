@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import type { Role } from "@/generated/prisma/enums";
 
 // This config is used by both the middleware (Edge) and the full auth
 // The authorize function that uses Prisma is only in the full auth config
@@ -99,7 +100,7 @@ export const authConfig = {
       if (token) {
         session.user.id = token.id as string;
         session.user.username = token.username as string;
-        session.user.role = token.role as "ADMIN" | "KOORDINATOR" | "ANGGOTA";
+        session.user.role = token.role as Role;
         session.user.divisionId = token.divisionId as string | null;
         session.user.divisionName = token.divisionName as string | null;
       }

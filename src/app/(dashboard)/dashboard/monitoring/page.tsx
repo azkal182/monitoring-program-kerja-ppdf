@@ -1,433 +1,248 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
-import { format, subMonths, addMonths } from "date-fns";
+import Link from "next/link";
+import { format, subDays, addDays, subMonths, addMonths } from "date-fns";
 import { id } from "date-fns/locale";
-import {
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
-  TrendingUp,
-  Building2,
-  FileText,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  LineChart,
-  Line,
-} from "recharts";
+import { ChevronLeft, ChevronRight, Calendar, Download } from "lucide-react";
 
-import { useMonitoringStats } from "@/hooks/use-monitoring";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDailyMonitoring, useMonthlyMonitoring } from "@/hooks/use-monitoring";
+import { QuickStats } from "@/components/monitoring/quick-stats";
+import { DivisionAccordion } from "@/components/monitoring/division-accordion";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { PageContent } from "@/components/dashboard/page-content";
 
-const COLORS = {
-  completed: "#22c55e",
-  completedWithIssue: "#f59e0b",
-  notExecuted: "#ef4444",
-  pending: "#94a3b8",
-};
-
 export default function MonitoringPage() {
-  const { data: session } = useSession();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const monthStr = format(currentMonth, "yyyy-MM");
+  const [period, setPeriod] = useState<"daily" | "monthly">("daily");
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  const { data: stats, isLoading } = useMonitoringStats(monthStr);
+  // Format for API calls
+  const dateStr = format(currentDate, "yyyy-MM-dd");
+  const monthStr = format(currentDate, "yyyy-MM");
 
-  const isAdmin = session?.user?.role === "ADMIN";
+  // Fetch data based on period
+  const { data: dailyData, isLoading: dailyLoading } = useDailyMonitoring(
+    period === "daily" ? dateStr : undefined
+  );
+  const { data: monthlyData, isLoading: monthlyLoading } = useMonthlyMonitoring(
+    period === "monthly" ? monthStr : undefined
+  );
 
-  const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-  const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const isLoading = period === "daily" ? dailyLoading : monthlyLoading;
+  const stats = period === "daily" ? dailyData : monthlyData;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // Navigation handlers
+  const handlePrevious = () => {
+    if (period === "daily") {
+      setCurrentDate(subDays(currentDate, 1));
+    } else {
+      setCurrentDate(subMonths(currentDate, 1));
+    }
+  };
 
-  if (!stats) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          Tidak ada data monitoring
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleNext = () => {
+    if (period === "daily") {
+      setCurrentDate(addDays(currentDate, 1));
+    } else {
+      setCurrentDate(addMonths(currentDate, 1));
+    }
+  };
 
-  // Data for pie chart
-  const pieData = [
-    { name: "Selesai", value: stats.overview.completed, color: COLORS.completed },
-    { name: "Selesai (Kendala)", value: stats.overview.completedWithIssue, color: COLORS.completedWithIssue },
-    { name: "Tidak Terlaksana", value: stats.overview.notExecuted, color: COLORS.notExecuted },
-    { name: "Pending", value: stats.overview.pending, color: COLORS.pending },
-  ].filter(d => d.value > 0);
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
 
-  // Data for bar chart (by division)
-  const barData = stats.byDivision.map(d => ({
-    name: d.divisionName,
-    Selesai: d.completed,
-    Kendala: d.completedWithIssue,
-    Gagal: d.notExecuted,
-    Pending: d.pending,
-  }));
-
-  // Aggregate daily trend for line chart (weekly)
-  const lineData = stats.dailyTrend.map(d => ({
-    date: format(new Date(d.date), "dd MMM", { locale: id }),
-    total: d.completed + d.completedWithIssue + d.notExecuted + d.pending,
-    terlaksana: d.completed + d.completedWithIssue,
-  }));
+  // Format display
+  const displayDate =
+    period === "daily"
+      ? format(currentDate, "EEEE, dd MMMM yyyy", { locale: id })
+      : format(currentDate, "MMMM yyyy", { locale: id });
 
   return (
     <PageContent
       title="Monitoring Program Kerja"
-      description={isAdmin ? "Semua divisi" : `Divisi ${session?.user?.divisionName || "-"}`}
-      actions={
-        <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handlePrevMonth}
-            className="h-9 w-9 shrink-0"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="flex-1 min-w-[140px] text-center font-medium sm:flex-none">
-            {format(currentMonth, "MMMM yyyy", { locale: id })}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleNextMonth}
-            className="h-9 w-9 shrink-0"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      }
+      description="Dashboard monitoring dengan tampilan harian dan bulanan"
     >
 
-      {/* Overview Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Jadwal</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.overview.totalSchedules}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.overview.completed}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ada Kendala</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{stats.overview.completedWithIssue}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tidak Terlaksana</CardTitle>
-            <XCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.overview.notExecuted}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tingkat Eksekusi</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.overview.completionRate}%</div>
-            <Progress value={stats.overview.completionRate} className="mt-2" />
-          </CardContent>
-        </Card>
-      </div>
+      {/* Period Toggle */}
+      <Tabs value={period} onValueChange={(v) => setPeriod(v as "daily" | "monthly")}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="daily">Harian</TabsTrigger>
+            <TabsTrigger value="monthly">Bulanan</TabsTrigger>
+          </TabsList>
 
-      {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Distribusi Status
-            </CardTitle>
-            <CardDescription>Persentase status pelaksanaan</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[320px]">
-            {pieData.length > 0 ? (
-              <div className="w-full overflow-x-auto">
-                <div className="min-w-[320px] h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Tidak ada data
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          {/* Date/Month Navigation */}
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePrevious}
+                className="shrink-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
 
-        {/* Daily Trend Line Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Tren Harian
-            </CardTitle>
-            <CardDescription>Jumlah program per hari</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[320px]">
-            {lineData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineData} margin={{ left: -10, right: 10, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 11 }} width={32} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="total"
-                    stroke="#94a3b8"
-                    name="Total Jadwal"
-                    strokeWidth={2}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="terlaksana"
-                    stroke="#22c55e"
-                    name="Terlaksana"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Tidak ada data
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Bar Chart - By Division (Admin only) */}
-      {isAdmin && stats.byDivision.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Status per Divisi
-            </CardTitle>
-            <CardDescription>Perbandingan pelaksanaan antar divisi</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[360px] md:h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} layout="vertical" margin={{ left: -20, right: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="Selesai" stackId="a" fill={COLORS.completed} />
-                <Bar dataKey="Kendala" stackId="a" fill={COLORS.completedWithIssue} />
-                <Bar dataKey="Gagal" stackId="a" fill={COLORS.notExecuted} />
-                <Bar dataKey="Pending" stackId="a" fill={COLORS.pending} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Programs Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Detail per Program
-          </CardTitle>
-          <CardDescription>Status pelaksanaan setiap program</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {stats.byProgram.length > 0 ? (
-            <>
-              <div className="hidden lg:block">
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[700px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Program</TableHead>
-                        {isAdmin && <TableHead>Divisi</TableHead>}
-                        <TableHead className="text-center">Total</TableHead>
-                        <TableHead className="text-center">Selesai</TableHead>
-                        <TableHead className="text-center">Kendala</TableHead>
-                        <TableHead className="text-center">Gagal</TableHead>
-                        <TableHead className="text-center">Pending</TableHead>
-                        <TableHead className="text-right">Rate</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {stats.byProgram.map((program) => (
-                        <TableRow key={program.programId}>
-                          <TableCell className="font-medium">{program.programName}</TableCell>
-                          {isAdmin && (
-                            <TableCell className="text-muted-foreground">
-                              {program.divisionName}
-                            </TableCell>
-                          )}
-                          <TableCell className="text-center">{program.total}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="default" className="bg-green-500">
-                              {program.completed}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="secondary" className="bg-amber-500 text-white">
-                              {program.completedWithIssue}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="destructive">
-                              {program.notExecuted}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline">
-                              {program.pending}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Progress value={program.completionRate} className="w-16 h-2" />
-                              <span className="text-sm font-medium w-10">
-                                {program.completionRate}%
-                              </span>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+              <div className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 sm:min-w-[280px] sm:border-0 sm:px-0 sm:py-0">
+                <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate text-sm font-medium sm:text-base">
+                  {displayDate}
+                </span>
               </div>
 
-              <div className="space-y-3 lg:hidden">
-                {stats.byProgram.map((program) => (
-                  <div
-                    key={program.programId}
-                    className="rounded-lg border bg-card p-4 shadow-sm"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <p className="text-sm font-semibold">{program.programName}</p>
-                      {isAdmin && (
-                        <p className="text-xs text-muted-foreground">
-                          {program.divisionName}
-                        </p>
-                      )}
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Total</p>
-                        <p className="text-base font-semibold">{program.total}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Rate</p>
-                        <div className="mt-1 flex items-center gap-2">
-                          <Progress value={program.completionRate} className="h-2 flex-1" />
-                          <span className="text-sm font-medium">
-                            {program.completionRate}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Badge variant="default" className="w-fit bg-green-500">
-                          Selesai: {program.completed}
-                        </Badge>
-                        <Badge variant="secondary" className="w-fit bg-amber-500 text-white">
-                          Kendala: {program.completedWithIssue}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Badge variant="destructive" className="w-fit">
-                          Gagal: {program.notExecuted}
-                        </Badge>
-                        <Badge variant="outline" className="w-fit">
-                          Pending: {program.pending}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="py-8 text-center text-muted-foreground">
-              Tidak ada program yang terjadwal bulan ini
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleNext}
+                className="shrink-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {period === "daily" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToday}
+                className="w-full sm:w-auto"
+              >
+                Hari Ini
+              </Button>
+            )}
+            {period === "monthly" && (
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+                <Link
+                  href={`/api/reports/monthly/pdf?month=${monthStr}`}
+                  target="_blank"
+                  className="justify-center"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export PDF
+                </Link>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Content */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : !stats ? (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Tidak ada data monitoring
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <TabsContent value="daily" className="space-y-6 mt-6">
+              {/* Quick Stats */}
+              <QuickStats stats={stats.overview} />
+
+              {/* Division Breakdown */}
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Breakdown per Divisi</h2>
+                {"byDivision" in stats && stats.byDivision.length > 0 && "programs" in stats.byDivision[0] && (
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  <DivisionAccordion divisions={stats.byDivision as any} />
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="monthly" className="space-y-6 mt-6">
+              {/* Quick Stats */}
+              <QuickStats stats={stats.overview} />
+
+              {/* Division Breakdown */}
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Breakdown per Divisi</h2>
+                {"byDivision" in stats && stats.byDivision.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {stats.byDivision.map((division) => (
+                      <Card key={division.divisionId}>
+                        <CardContent className="p-6">
+                          {/* Division Name */}
+                          <h3 className="font-semibold text-lg mb-3">{division.divisionName}</h3>
+
+                          {/* Stats Grid */}
+                          <div className="space-y-3">
+                            {/* Completion Summary */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">
+                                {division.completed + division.completedWithIssue}/{division.total} terlaksana
+                              </span>
+                              <span className="text-2xl font-bold">{division.completionRate}%</span>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="w-full bg-slate-200 rounded-full h-2">
+                              <div
+                                className="bg-primary h-2 rounded-full transition-all"
+                                style={{ width: `${division.completionRate}%` }}
+                              />
+                            </div>
+
+                            {/* Status Breakdown */}
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                              {division.completed > 0 && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
+                                    <span className="text-green-600 font-semibold text-xs">{division.completed}</span>
+                                  </div>
+                                  <span className="text-muted-foreground">Selesai</span>
+                                </div>
+                              )}
+
+                              {division.completedWithIssue > 0 && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100">
+                                    <span className="text-orange-600 font-semibold text-xs">{division.completedWithIssue}</span>
+                                  </div>
+                                  <span className="text-muted-foreground">Kendala</span>
+                                </div>
+                              )}
+
+                              {division.notExecuted > 0 && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
+                                    <span className="text-red-600 font-semibold text-xs">{division.notExecuted}</span>
+                                  </div>
+                                  <span className="text-muted-foreground">Gagal</span>
+                                </div>
+                              )}
+
+                              {division.pending > 0 && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100">
+                                    <span className="text-slate-600 font-semibold text-xs">{division.pending}</span>
+                                  </div>
+                                  <span className="text-muted-foreground">Belum Terlaksana</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                      Tidak ada data divisi
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+          </>
+        )}
+      </Tabs>
     </PageContent>
   );
 }

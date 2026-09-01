@@ -1,6 +1,6 @@
 "use client";
 
-import { useConfirmation } from "@/app/confirmation-context";
+import { useConfirmation } from "@/contexts/confirmation-context";
 import AgendaFormDialog from "@/components/agendas/agenda-form-dialog";
 import KuartalFormDialog from "@/components/agendas/kuartal-form-dialog";
 import { Badge } from "@/components/ui/badge";

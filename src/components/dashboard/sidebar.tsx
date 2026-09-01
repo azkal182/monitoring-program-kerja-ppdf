@@ -49,10 +49,9 @@ const navigationGroups: NavigationGroup[] = [
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       {
-        name: "Monitoring V2",
-        href: "/dashboard/monitoring-v2",
+        name: "Monitoring",
+        href: "/dashboard/monitoring",
         icon: BarChart3,
-        badge: "New",
       },
       {
         name: "Laporan Hari Ini",
@@ -98,16 +97,6 @@ const navigationGroups: NavigationGroup[] = [
         href: "/dashboard/push-notifications",
         icon: Bell,
         adminOnly: true,
-      },
-    ],
-  },
-  {
-    title: "Monitoring",
-    items: [
-      {
-        name: "Monitoring Lama",
-        href: "/dashboard/monitoring",
-        icon: BarChart3,
       },
     ],
   },

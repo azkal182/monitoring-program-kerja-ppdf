@@ -1,50 +1,9 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ScheduleType } from "@/generated/prisma/enums";
+import type { Program, ProgramInput, FetchProgramsParams } from "@/types/program";
 
-export type RequirementType = "PHOTO" | "DOCUMENT";
-
-export interface Program {
-  id: string;
-  name: string;
-  description: string | null;
-  scheduleType: ScheduleType;
-  scheduleDays: number[];
-  scheduleMonthDays: number[];
-  customDates: string[];
-  scheduleTime: string | null;
-  requirementType: RequirementType;
-  minUploads: number;
-  isActive: boolean;
-  divisionId: string;
-  division: { id: string; name: string };
-  _count?: { schedules: number };
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProgramInput {
-  name: string;
-  description?: string;
-  scheduleType: ScheduleType;
-  scheduleDays: number[];
-  scheduleMonthDays: number[];
-  customDates: string[];
-  scheduleTime: string;
-  requirementType: RequirementType;
-  minUploads: number;
-  isActive: boolean;
-  divisionId: string;
-}
-
-interface FetchProgramsParams {
-  divisionId?: string;
-  isActive?: boolean;
-  limit?: number;
-  offset?: number;
-  scheduleTypes?: ScheduleType[];
-}
+export type { Program, ProgramInput, FetchProgramsParams, RequirementType } from "@/types/program";
 
 async function fetchPrograms(params?: FetchProgramsParams): Promise<Program[]> {
   const searchParams = new URLSearchParams();

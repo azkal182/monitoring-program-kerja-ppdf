@@ -22,7 +22,7 @@ import { Input } from "../ui/input";
 
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
-import { PeriodPicker } from "../periode-picker";
+import { PeriodPicker } from "@/components/shared/periode-picker";
 import { useCreateQuarter } from "@/hooks/quarter";
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";

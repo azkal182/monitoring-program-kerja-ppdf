@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { sessionStartSchema } from "@/lib/validations/session";
 import { parsePagination } from "@/lib/pagination";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 export async function GET(request: NextRequest) {
   try {
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
       // Get current time in Jakarta timezone
       const now = new Date();
       const jakartaTime = new Date(
-        now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }),
+        now.toLocaleString("en-US", { timeZone: APP_TIME_ZONE }),
       );
 
       // Create scheduled time for today in Jakarta
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
         const earliestTimeStr = earliestTime.toLocaleTimeString("id-ID", {
           hour: "2-digit",
           minute: "2-digit",
-          timeZone: "Asia/Jakarta",
+          timeZone: APP_TIME_ZONE,
         });
 
         return NextResponse.json(

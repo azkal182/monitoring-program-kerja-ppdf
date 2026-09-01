@@ -1,8 +1,7 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SessionProvider, useSession } from "next-auth/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +12,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Toaster } from "@/components/ui/sonner";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 function getDeviceGuidance() {
@@ -86,31 +84,7 @@ function getDeviceGuidance() {
   };
 }
 
-export function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 60 * 1000, // 1 minute
-            refetchOnWindowFocus: false,
-          },
-        },
-      })
-  );
-
-  return (
-    <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <Toaster position="top-right" richColors />
-        <PushNotificationBootstrapper />
-      </QueryClientProvider>
-    </SessionProvider>
-  );
-}
-
-function PushNotificationBootstrapper() {
+export function PushNotificationBootstrapper() {
   const { status } = useSession();
   const { isSupported, permission, subscribe } = usePushNotifications();
   const [open, setOpen] = useState(false);

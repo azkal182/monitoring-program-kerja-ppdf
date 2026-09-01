@@ -46,23 +46,23 @@ async function getStats() {
   return { divisionCount, userCount, programCount, todaySessionCount };
 }
 
-async function getDeadlines(user?: {
-  role?: string | null;
-  divisionId?: string | null;
-}) {
+async function getDeadlines() {
   const monthStart = startOfJakartaMonthUtc(new Date());
   const monthEnd = endOfJakartaMonthUtc(new Date());
-  const isAdmin = user?.role === "ADMIN";
 
   // Semua user melihat semua deadline, admin bisa filter per divisi via halaman deadlines
-  const divisionFilter = {};
-
   return prisma.deadline.findMany({
     where: {
       dueDate: { gte: monthStart, lte: monthEnd },
-      ...divisionFilter,
     },
-    include: { division: { select: { name: true } } },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      dueDate: true,
+      customDivision: true,
+      division: { select: { name: true } },
+    },
     orderBy: [{ dueDate: "asc" }, { title: "asc" }],
     take: 5,
   });
@@ -83,7 +83,7 @@ async function getAgendas() {
 export default async function DashboardPage() {
   const session = await auth();
   const stats = await getStats();
-  const deadlines = await getDeadlines(session?.user);
+  const deadlines = await getDeadlines();
   const agendas = await getAgendas();
   const monthLabel = formatInJakarta(new Date(), "MMMM yyyy");
 
@@ -220,9 +220,6 @@ export default async function DashboardPage() {
                 ))}
               </ul>
             )}
-            {/* <p className="text-sm text-muted-foreground">
-              Belum ada aktivitas hari ini.
-            </p> */}
           </CardContent>
         </Card>
 
@@ -271,7 +268,7 @@ export default async function DashboardPage() {
                   <div className="font-medium">{deadline.title}</div>
                   <div className="text-xs text-muted-foreground">
                     {formatDate(deadline.dueDate)} •{" "}
-                    {(deadline as { customDivision?: string | null }).customDivision ?? deadline.division?.name ?? "Umum"}
+                    {deadline.customDivision ?? deadline.division?.name ?? "Umum"}
                   </div>
                   {deadline.description && (
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
