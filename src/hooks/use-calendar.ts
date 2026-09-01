@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-export type CalendarScheduleType = "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM";
+export type CalendarScheduleType = "DAILY" | "WEEKLY" | "MONTHLY" | "CUSTOM" | "AGENDA";
 export type CalendarRequirementType = "PHOTO" | "DOCUMENT";
 
 export interface CalendarEvent {

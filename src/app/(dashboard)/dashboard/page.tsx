@@ -25,7 +25,7 @@ import {
   formatInJakarta,
   startOfJakartaMonthUtc,
 } from "@/lib/timezone";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 async function getStats() {
   const [divisionCount, userCount, programCount, todaySessionCount] =
@@ -68,23 +68,69 @@ async function getDeadlines() {
   });
 }
 
-async function getAgendas() {
-  return prisma.agenda.findMany({
-    where: {
-      quarter: {
-        active: true,
-      },
-    },
-    take: 5,
-    orderBy: { date: "asc" },
+async function getAgendaAndMonthlyPrograms() {
+  const today = new Date();
+  const todayDateStr = formatInJakarta(today, "yyyy-MM-dd");
+  const todayDayOfMonth = parseInt(formatInJakarta(today, "d"), 10);
+  const currentMonthNum = parseInt(formatInJakarta(today, "M"), 10);
+  const currentYearNum = parseInt(formatInJakarta(today, "yyyy"), 10);
+
+  const [agendas, monthlyPrograms] = await Promise.all([
+    prisma.agenda.findMany({
+      where: { quarter: { active: true } },
+      orderBy: { date: "asc" },
+    }),
+    prisma.program.findMany({
+      where: { isActive: true, scheduleType: "MONTHLY" },
+      include: { division: true },
+    })
+  ]);
+
+  const upcomingEvents: any[] = [];
+
+  agendas.forEach(a => {
+    const agendaDateStr = formatInJakarta(a.date, "yyyy-MM-dd");
+    if (agendaDateStr >= todayDateStr) {
+      upcomingEvents.push({
+        type: "AGENDA" as const,
+        id: `A-${a.id}`,
+        name: a.name,
+        sortDate: new Date(agendaDateStr), 
+        dateInfo: agendaDateStr === todayDateStr ? "Hari Ini" : formatInJakarta(a.date, "dd MMM yyyy"),
+        subtitle: "Agenda Utama",
+        badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300"
+      });
+    }
   });
+
+  monthlyPrograms.forEach(p => {
+    p.scheduleMonthDays.forEach(day => {
+      if (day >= todayDayOfMonth) {
+        // Construct date for this occurrence
+        const sortDate = new Date(currentYearNum, currentMonthNum - 1, day);
+        upcomingEvents.push({
+          type: "MONTHLY" as const,
+          id: `M-${p.id}-${day}`,
+          name: p.name,
+          sortDate: sortDate,
+          dateInfo: day === todayDayOfMonth ? "Hari Ini" : formatInJakarta(sortDate, "dd MMM yyyy"),
+          subtitle: `Divisi ${p.division.name}`,
+          badgeColor: "bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-300"
+        });
+      }
+    });
+  });
+
+  upcomingEvents.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
+  
+  return upcomingEvents.slice(0, 5);
 }
 
 export default async function DashboardPage() {
   const session = await auth();
   const stats = await getStats();
   const deadlines = await getDeadlines();
-  const agendas = await getAgendas();
+  const agendaAndPrograms = await getAgendaAndMonthlyPrograms();
   const monthLabel = formatInJakarta(new Date(), "MMMM yyyy");
 
   return (
@@ -192,30 +238,40 @@ export default async function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
               <div>
-                <CardTitle>Agenda Nasional</CardTitle>
+                <CardTitle>Jadwal Mendatang</CardTitle>
                 <CardDescription>
-                  Sesi pelaksanaan yang baru diselesaikan
+                  Agenda & Program bulanan terdekat (Mulai hari ini)
                 </CardDescription>
               </div>
               <Button asChild size="sm" variant="outline">
-                <Link href="/dashboard/agendas">Lihat Semua</Link>
+                <Link href="/dashboard/calendar">Lihat Kalender</Link>
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {agendas.length === 0 ? (
+            {agendaAndPrograms.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Tidak ada agenda aktif saat ini.
+                Tidak ada agenda atau program bulanan dalam waktu dekat.
               </p>
             ) : (
-              <ul className="space-y-2">
-                {agendas.map((agenda) => (
-                  <li key={agenda.id} className="flex items-start gap-3">
-                    <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium">{agenda.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDate(agenda.date)}
+              <ul className="space-y-4">
+                {agendaAndPrograms.map((item) => (
+                  <li key={item.id} className="flex items-start gap-3">
+                    <CalendarDays className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="flex-1 space-y-1">
+                      <div className="font-medium leading-none">{item.name}</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className={cn("px-1.5 py-0.5 rounded-md font-semibold", item.badgeColor)}>
+                          {item.type === "AGENDA" ? "Agenda" : "Bulanan"}
+                        </span>
+                        <span>•</span>
+                        <span>{item.dateInfo}</span>
+                        {item.type === "MONTHLY" && (
+                          <>
+                            <span>•</span>
+                            <span>{item.subtitle}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </li>

@@ -19,9 +19,9 @@ interface CalendarEvent {
   programName: string;
   divisionId: string;
   divisionName: string;
-  scheduleType: ScheduleType;
+  scheduleType: ScheduleType | "AGENDA";
   scheduleTime: string | null;
-  requirementType: ProgramRequirementType;
+  requirementType: ProgramRequirementType | "DOCUMENT";
   minUploads: number;
 }
 
@@ -89,22 +89,9 @@ export async function GET(request: NextRequest) {
 
       switch (program.scheduleType) {
         case ScheduleType.DAILY:
-        case ScheduleType.WEEKLY: {
-          const targetDays = program.scheduleDays ?? [];
-          if (targetDays.length === 0) break;
+        case ScheduleType.WEEKLY:
+          break; // Alih fungsi kalender: tidak lagi menampilkan harian/mingguan
 
-          for (const day of daysInMonthRange) {
-            const dayIndex = getJakartaDayIndex(day);
-            if (targetDays.includes(dayIndex)) {
-              eventDates.add(getJakartaDateKey(day));
-            }
-          }
-
-          if (program.scheduleType === ScheduleType.DAILY) {
-            hasDailyPrograms = true;
-          }
-          break;
-        }
         case ScheduleType.MONTHLY: {
           const monthDays = program.scheduleMonthDays ?? [];
           for (const dayOfMonth of monthDays) {
@@ -115,15 +102,8 @@ export async function GET(request: NextRequest) {
           }
           break;
         }
-        case ScheduleType.CUSTOM: {
-          for (const customDate of program.customDates ?? []) {
-            const key = getJakartaDateKey(customDate);
-            if (key.startsWith(monthKey)) {
-              eventDates.add(key);
-            }
-          }
-          break;
-        }
+        case ScheduleType.CUSTOM:
+          break; // Alih fungsi kalender: tidak menampilkan khusus
         default:
           break;
       }
@@ -161,6 +141,40 @@ export async function GET(request: NextRequest) {
         existing.push(baseEvent);
         eventsByDate.set(dateKey, existing);
       }
+    }
+
+    const agendas = await prisma.agenda.findMany({
+      where: {
+        date: {
+          startsWith: monthKey
+        }
+      }
+    });
+
+    for (const agenda of agendas) {
+      const dateKey = agenda.date;
+      const baseEvent: CalendarEvent = {
+        programId: agenda.id,
+        programName: agenda.name,
+        divisionId: "agenda",
+        divisionName: "Agenda Organisasi",
+        scheduleType: "AGENDA",
+        scheduleTime: null,
+        requirementType: "DOCUMENT",
+        minUploads: 0,
+      };
+
+      programSummaries.push({
+        ...baseEvent,
+        occurrenceDates: [dateKey],
+        scheduleDays: [],
+        scheduleMonthDays: [],
+        customDates: [],
+      });
+
+      const existing = eventsByDate.get(dateKey) ?? [];
+      existing.push(baseEvent);
+      eventsByDate.set(dateKey, existing);
     }
 
     // Sort events within each date for deterministic order

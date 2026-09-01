@@ -19,6 +19,7 @@ import {
   Sun,
   Loader2,
   Minus,
+  Plus,
 } from "lucide-react";
 
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
@@ -38,27 +39,31 @@ import {
 } from "@/hooks/use-calendar";
 import { cn } from "@/lib/utils";
 import { PageContent } from "@/components/dashboard/page-content";
+import { AddEventDialog } from "@/components/dashboard/add-event-dialog";
 
 const SCHEDULE_LABEL: Record<string, string> = {
   DAILY: "Harian",
   WEEKLY: "Mingguan",
   MONTHLY: "Bulanan",
   CUSTOM: "Khusus",
+  AGENDA: "Agenda Utama",
 };
 
 const SCHEDULE_ACCENT: Record<string, string> = {
   DAILY: "bg-sky-500/90",
   WEEKLY: "bg-emerald-500/90",
-  MONTHLY: "bg-violet-500/90",
+  MONTHLY: "bg-teal-600/90 text-white",
   CUSTOM: "bg-amber-500/90",
+  AGENDA: "bg-amber-500/90 text-white",
 };
 
-const SCHEDULE_INDICATOR_COLOR: Record<CalendarEvent["scheduleType"], string> =
+const SCHEDULE_INDICATOR_COLOR: Record<CalendarEvent["scheduleType"] | string, string> =
   {
     DAILY: "#0ea5e9", // sky-500
     WEEKLY: "#10b981", // emerald-500
-    MONTHLY: "#8b5cf6", // violet-500
+    MONTHLY: "#0d9488", // teal-600
     CUSTOM: "#f59e0b", // amber-500
+    AGENDA: "#f59e0b", // amber-500
   };
 
 const WEEKDAY_LABELS = [
@@ -82,10 +87,10 @@ export default function CalendarPage() {
   const today = useMemo(() => new Date(), []);
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(today));
   const [selectedDate, setSelectedDate] = useState<Date>(() => today);
-  const [showDaily, setShowDaily] = useState(false);
+  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
 
   const monthParam = format(currentMonth, "yyyy-MM");
-  const { data, isLoading, isFetching } = useProgramCalendar(monthParam);
+  const { data, isLoading, isFetching, refetch } = useProgramCalendar(monthParam);
   const timezone = data?.timezone ?? "Asia/Jakarta";
 
   function moveToMonth(nextMonth: Date) {
@@ -99,46 +104,31 @@ export default function CalendarPage() {
     [selectedDate, timezone]
   );
 
-  const dailyAwareEventsByDate = useMemo<EventsByDate>(() => {
+  const eventsByDate = useMemo<EventsByDate>(() => {
     if (!data) return {};
-    if (showDaily) return data.eventsByDate;
-
-    const filtered: EventsByDate = {};
-    for (const [key, events] of Object.entries(data.eventsByDate)) {
-      const subset = events.filter((event) => event.scheduleType !== "DAILY");
-      if (subset.length > 0) {
-        filtered[key] = subset;
-      }
-    }
-    return filtered;
-  }, [data, showDaily]);
+    return data.eventsByDate;
+  }, [data]);
 
   const monthlyPrograms = useMemo<CalendarProgramSummary[]>(() => {
     if (!data) return [];
-    return data.programs.filter(
-      (program) => showDaily || program.scheduleType !== "DAILY"
-    );
-  }, [data, showDaily]);
+    return data.programs;
+  }, [data]);
 
   const selectedDayEvents = useMemo<CalendarEvent[]>(() => {
     if (!data) return [];
-    const base = data.eventsByDate[selectedDateKey] ?? [];
-    return showDaily
-      ? base
-      : base.filter((event) => event.scheduleType !== "DAILY");
-  }, [data, selectedDateKey, showDaily]);
+    return data.eventsByDate[selectedDateKey] ?? [];
+  }, [data, selectedDateKey]);
 
   const hasData = data ? Object.keys(data.eventsByDate).length > 0 : false;
 
   const DayButton = (props: React.ComponentProps<typeof CalendarDayButton>) => {
     const dateKey = formatJakartaKey(props.day.date, timezone);
     const events = data?.eventsByDate[dateKey] ?? [];
-    const filteredEvents = dailyAwareEventsByDate[dateKey] ?? [];
-    const hasEvents = events.length > 0;
-    const visibleEvents = filteredEvents.length;
+    const visibleEvents = events.length;
+    const hasEvents = visibleEvents > 0;
 
     const visibleTypes = Array.from(
-      new Set(filteredEvents.map((event) => event.scheduleType))
+      new Set(events.map((event) => event.scheduleType))
     );
 
     const indicatorStyle: CSSProperties = {};
@@ -193,10 +183,10 @@ export default function CalendarPage() {
       title="Kalender Program Kerja"
       description={
         authSession?.user?.role === "ADMIN"
-          ? "Semua divisi"
+          ? "Semua agenda & program bulanan divisi"
           : authSession?.user?.divisionName
-            ? `Divisi ${authSession.user.divisionName}`
-            : "Program yang terjadwal"
+            ? `Program Bulanan Divisi ${authSession.user.divisionName}`
+            : "Program Bulanan terjadwal"
       }
       actions={
         <div className="flex flex-wrap items-center gap-2">
@@ -223,20 +213,6 @@ export default function CalendarPage() {
             Berikutnya
             <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={showDaily ? "default" : "outline"}
-            className="gap-2"
-            onClick={() => setShowDaily((prev) => !prev)}
-            disabled={!data?.hasDailyPrograms}
-            aria-pressed={showDaily}
-          >
-            <Sun className="h-4 w-4" />
-            {showDaily
-              ? "Sembunyikan Program Harian"
-              : "Tampilkan Program Harian"}
-          </Button>
         </div>
       }
     >
@@ -244,9 +220,16 @@ export default function CalendarPage() {
       <div className="grid gap-6 lg:grid-cols-[380px,1fr]">
         <Card className="shadow-sm">
           <CardHeader className="space-y-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <CalendarDays className="h-5 w-5" />
-              Kalender Bulanan
+            <CardTitle className="flex items-center justify-between text-lg">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" />
+                Kalender Bulanan
+              </div>
+              {authSession?.user?.role === "ADMIN" && (
+                <Button size="sm" onClick={() => setIsAddEventOpen(true)}>
+                  <Plus className="mr-1 h-4 w-4" /> Tambah
+                </Button>
+              )}
             </CardTitle>
             <CardDescription>
               Zona waktu: {timezone.replace("_", " ")} •{" "}
@@ -287,21 +270,18 @@ export default function CalendarPage() {
           <CardHeader className="space-y-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <ListChecks className="h-5 w-5" />
-              Program pada {format(selectedDate, "d MMMM yyyy", { locale: id })}
+              Jadwal pada {format(selectedDate, "d MMMM yyyy", { locale: id })}
             </CardTitle>
             <CardDescription>
               {selectedDayEvents.length > 0
-                ? `${selectedDayEvents.length} program dijadwalkan`
-                : "Tidak ada program non-harian pada tanggal ini"}
+                ? `${selectedDayEvents.length} jadwal`
+                : "Tidak ada jadwal pada tanggal ini"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {selectedDayEvents.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                {showDaily &&
-                (data?.eventsByDate[selectedDateKey]?.length ?? 0) > 0
-                  ? "Semua program pada tanggal ini bersifat harian."
-                  : "Tidak ada program yang terjadwal."}
+                Tidak ada agenda atau program bulanan yang terjadwal.
               </div>
             ) : (
               <div className="space-y-3">
@@ -338,12 +318,17 @@ export default function CalendarPage() {
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      <span>Minimal bukti: {event.minUploads}</span>
-                      <span>
-                        Jenis bukti:{" "}
-                        {event.requirementType === "PHOTO" ? "Foto" : "Dokumen"}
-                      </span>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <div
+                        className={cn(
+                          "flex items-center justify-center h-6 min-w-8 px-2 rounded-md text-xs font-semibold border",
+                          event.scheduleType === "AGENDA"
+                            ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30"
+                            : "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-500/20 dark:text-teal-300 dark:border-teal-500/30"
+                        )}
+                      >
+                        {format(selectedDate, "d MMMM", { locale: id })}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -360,20 +345,14 @@ export default function CalendarPage() {
             Daftar Program Kerja Bulan Ini
           </CardTitle>
           <CardDescription>
-            Menampilkan seluruh program yang berjalan selama{" "}
-            {format(currentMonth, "MMMM yyyy", { locale: id })}
-            {showDaily
-              ? " (termasuk harian)"
-              : " (tidak termasuk program harian)"}
-            .
+            Menampilkan seluruh agenda & program bulanan yang berjalan selama{" "}
+            {format(currentMonth, "MMMM yyyy", { locale: id })}.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {monthlyPrograms.length === 0 ? (
             <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-              {showDaily
-                ? "Tidak ada program harian pada bulan ini."
-                : "Tidak ada program non-harian pada bulan ini."}
+              Tidak ada agenda atau program bulanan pada bulan ini.
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -401,48 +380,24 @@ export default function CalendarPage() {
                         {SCHEDULE_LABEL[program.scheduleType]}
                       </Badge>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3" />{" "}
-                        {program.occurrenceDates.length} kali
-                      </span>
-                      {program.scheduleTime && (
-                        <span className="inline-flex items-center gap-1">
-                          <Sun className="h-3 w-3" /> {program.scheduleTime} WIB
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1">
-                        <Minus className="h-3 w-3" /> Bukti minimal{" "}
-                        {program.minUploads}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      {program.scheduleType === "WEEKLY" &&
-                        program.scheduleDays.length > 0 && (
-                          <span className="rounded-full bg-muted px-2 py-1">
-                            Hari:{" "}
-                            {program.scheduleDays
-                              .map(
-                                (day) => WEEKDAY_LABELS[day] ?? `Hari ke-${day}`
-                              )
-                              .join(", ")}
-                          </span>
-                        )}
-                      {program.scheduleType === "MONTHLY" &&
-                        program.scheduleMonthDays.length > 0 && (
-                          <span className="rounded-full bg-muted px-2 py-1">
-                            Tanggal:{" "}
-                            {program.scheduleMonthDays
-                              .map((day) => day.toString())
-                              .join(", ")}
-                          </span>
-                        )}
-                      {program.scheduleType === "CUSTOM" &&
-                        program.customDates.length > 0 && (
-                          <span className="rounded-full bg-muted px-2 py-1">
-                            Tanggal khusus: {program.customDates.join(", ")}
-                          </span>
-                        )}
+                    <div className="pt-2 flex flex-wrap gap-2">
+                      {program.occurrenceDates.map((dateStr) => {
+                        const isAgenda = program.scheduleType === "AGENDA";
+                        const dateObj = new Date(dateStr);
+                        return (
+                          <div
+                            key={dateStr}
+                            className={cn(
+                              "flex items-center justify-center h-6 min-w-8 px-2 rounded-md text-xs font-semibold border",
+                              isAgenda 
+                                ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30"
+                                : "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-500/20 dark:text-teal-300 dark:border-teal-500/30"
+                            )}
+                          >
+                            {format(dateObj, "d MMM", { locale: id })}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -451,6 +406,15 @@ export default function CalendarPage() {
           )}
         </CardContent>
       </Card>
+      <AddEventDialog
+        isOpen={isAddEventOpen}
+        onClose={() => setIsAddEventOpen(false)}
+        selectedDate={selectedDate}
+        eventsByDate={eventsByDate}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
     </PageContent>
   );
 }
