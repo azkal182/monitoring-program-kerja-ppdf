@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
@@ -301,8 +302,8 @@ export function DashboardSidebar({
       <div className="flex h-full flex-col bg-card">
         <div className="flex h-16 items-center border-b px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <ClipboardList className="h-4 w-4 text-primary-foreground" />
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden">
+              <Image src="/logo.png" alt="Khidmah Logo" width={32} height={32} className="object-contain" />
             </div>
             <span className="font-semibold">KHIDMAH</span>
           </Link>
@@ -316,8 +317,8 @@ export function DashboardSidebar({
     <aside className="hidden h-screen w-64 flex-col border-r bg-card shadow-sm xl:sticky xl:top-0 xl:flex">
       <div className="flex h-16 items-center border-b px-4">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <ClipboardList className="h-4 w-4 text-primary-foreground" />
+          <div className="flex h-8 w-8 items-center justify-center overflow-hidden">
+            <Image src="/logo.png" alt="Khidmah Logo" width={32} height={32} className="object-contain" />
           </div>
           <span className="font-semibold">Khidmah</span>
         </Link>

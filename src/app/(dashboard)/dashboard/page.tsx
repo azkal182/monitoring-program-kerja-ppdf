@@ -134,53 +134,55 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Divisi</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+        <Card className="hover:shadow-md transition-shadow group">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Divisi</CardTitle>
+            <div className="p-2 bg-primary/10 rounded-full group-hover:scale-110 transition-transform">
+              <Building2 className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.divisionCount}</div>
-            <p className="text-xs text-muted-foreground">Unit kerja aktif</p>
+            <div className="text-2xl font-bold tracking-tight">{stats.divisionCount}</div>
+            <p className="text-xs text-muted-foreground/80 mt-1">Unit kerja aktif</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Pengguna
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+        <Card className="hover:shadow-md transition-shadow group">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Pengguna</CardTitle>
+            <div className="p-2 bg-primary/10 rounded-full group-hover:scale-110 transition-transform">
+              <Users className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.userCount}</div>
-            <p className="text-xs text-muted-foreground">Pengguna terdaftar</p>
+            <div className="text-2xl font-bold tracking-tight">{stats.userCount}</div>
+            <p className="text-xs text-muted-foreground/80 mt-1">Pengguna terdaftar</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Program Aktif</CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+        <Card className="hover:shadow-md transition-shadow group">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Program Aktif</CardTitle>
+            <div className="p-2 bg-primary/10 rounded-full group-hover:scale-110 transition-transform">
+              <ClipboardList className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.programCount}</div>
-            <p className="text-xs text-muted-foreground">
-              Program kerja berjalan
-            </p>
+            <div className="text-2xl font-bold tracking-tight">{stats.programCount}</div>
+            <p className="text-xs text-muted-foreground/80 mt-1">Program kerja berjalan</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Selesai Hari Ini
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+        <Card className="hover:shadow-md transition-shadow group">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Selesai Hari Ini</CardTitle>
+            <div className="p-2 bg-primary/10 rounded-full group-hover:scale-110 transition-transform">
+              <CheckCircle className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.todaySessionCount}</div>
-            <p className="text-xs text-muted-foreground">Sesi terselesaikan</p>
+            <div className="text-2xl font-bold tracking-tight">{stats.todaySessionCount}</div>
+            <p className="text-xs text-muted-foreground/80 mt-1">Sesi terselesaikan</p>
           </CardContent>
         </Card>
       </div>

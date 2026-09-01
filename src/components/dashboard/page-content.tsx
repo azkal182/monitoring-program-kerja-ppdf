@@ -20,7 +20,7 @@ export function PageContent({
   bodyClassName,
 }: PageContentProps) {
   return (
-    <section className={cn("space-y-6", className)}>
+    <section className={cn("space-y-6 md:space-y-8", className)}>
       <PageHeader
         title={title}
         description={description}
@@ -53,8 +53,14 @@ export function PageHeader({
       )}
     >
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
-        {description ? <p className="text-sm text-muted-foreground sm:text-base">{description}</p> : null}
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
+          {title}
+        </h1>
+        {description ? (
+          <p className="text-sm text-muted-foreground/80 sm:text-base font-medium">
+            {description}
+          </p>
+        ) : null}
       </div>
       {actions ? <div className="w-full sm:w-auto">{actions}</div> : null}
     </header>

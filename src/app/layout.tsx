@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { ConfirmationProvider } from "@/contexts/confirmation-context";
 
-const inter = Inter({
-  variable: "--font-inter",
+const fontSans = Plus_Jakarta_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
@@ -35,7 +35,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${fontSans.variable} font-sans antialiased bg-muted/20`}>
         <Providers>
           <ConfirmationProvider>{children}</ConfirmationProvider>
         </Providers>
