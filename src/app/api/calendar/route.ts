@@ -12,7 +12,7 @@ import {
   toJakartaDate,
   formatInJakarta,
 } from "@/lib/timezone";
-import { eachDayOfInterval, endOfMonth, startOfMonth } from "date-fns";
+import { eachDayOfInterval, endOfMonth, startOfMonth, getDaysInMonth } from "date-fns";
 
 interface CalendarEvent {
   programId: string;
@@ -59,8 +59,7 @@ export async function GET(request: NextRequest) {
     const monthKey = formatInJakarta(monthStart, "yyyy-MM");
     const monthStartKey = getJakartaDateKey(monthStart);
     const monthEndKey = getJakartaDateKey(monthEnd);
-    const daysInMonthRange = eachDayOfInterval({ start: monthStart, end: monthEnd });
-    const daysInMonth = toJakartaDate(monthEnd).getDate();
+    const daysInMonth = getDaysInMonth(jakartaTarget);
 
     const where: Record<string, unknown> = { isActive: true };
     if (session.user.role !== "ADMIN" && session.user.divisionId) {
