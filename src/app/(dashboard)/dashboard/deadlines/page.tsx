@@ -117,7 +117,13 @@ export default function DeadlinesPage() {
   }
 
   async function handleDelete(deadline: Deadline) {
-    if (!confirm(`Hapus deadline "${deadline.title}"?`)) return;
+    const confirmed = await confirm({
+      title: `Hapus deadline "${deadline.title}"?`,
+      description: "Data deadline yang dihapus tidak dapat dikembalikan.",
+      confirmLabel: "Hapus",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     try {
       await deleteMutation.mutateAsync(deadline.id);
       toast.success("Deadline berhasil dihapus");
