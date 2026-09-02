@@ -2,14 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { CalendarClock, MoreHorizontal, Pencil, Trash2, Plus } from "lucide-react";
+import { CalendarClock, MoreHorizontal, Pencil, Trash2, Plus, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   useDeadlines,
   useDeleteDeadline,
+  useMarkDeadlineDone,
   type Deadline,
 } from "@/hooks/use-deadlines";
+import { useConfirmation } from "@/contexts/confirmation-context";
 import { useDivisions } from "@/hooks/use-divisions";
 import { formatDate } from "@/lib/utils";
 import { formatInJakarta, startOfJakartaDayUtc } from "@/lib/timezone";
@@ -22,12 +24,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -80,6 +76,8 @@ export default function DeadlinesPage() {
   });
   const { data: divisions } = useDivisions();
   const deleteMutation = useDeleteDeadline();
+  const markDoneMutation = useMarkDeadlineDone();
+  const { confirm } = useConfirmation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
 
@@ -93,6 +91,29 @@ export default function DeadlinesPage() {
   function handleEdit(deadline: Deadline) {
     setSelectedDeadline(deadline);
     setDialogOpen(true);
+  }
+
+  async function handleDone(deadline: Deadline) {
+    const isDone = deadline.completed;
+    const actionText = isDone ? "Membatalkan status selesai" : "Menandai selesai";
+    
+    const confirmed = await confirm({
+      title: `${actionText} "${deadline.title}"?`,
+      description: isDone 
+        ? "Deadline akan kembali berstatus belum selesai."
+        : "Deadline akan ditandai sebagai selesai.",
+      confirmLabel: "Ya, Lanjutkan",
+      variant: isDone ? "danger" : "success",
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await markDoneMutation.mutateAsync(deadline.id);
+      toast.success(isDone ? "Status selesai dibatalkan" : "Deadline ditandai selesai");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal mengupdate status");
+    }
   }
 
   async function handleDelete(deadline: Deadline) {
@@ -176,61 +197,79 @@ export default function DeadlinesPage() {
             <>
               <div className="hidden lg:block">
                 <div className="overflow-x-auto">
-                <Table className="min-w-[900px]">
+                <Table className="min-w-[600px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Judul</TableHead>
-                      <TableHead>Divisi</TableHead>
-                      <TableHead>Deskripsi</TableHead>
+                      <TableHead className="w-12">No</TableHead>
+                      <TableHead>Informasi Deadline</TableHead>
+                      <TableHead className="w-32">Tanggal</TableHead>
+                      <TableHead className="w-28">Waktu</TableHead>
                       <TableHead className="w-28">Status</TableHead>
-                      {isAdmin && <TableHead className="w-10">Aksi</TableHead>}
+                      {isAdmin && <TableHead className="w-[140px]">Aksi</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {deadlines?.map((deadline) => {
+                    {deadlines?.map((deadline, index) => {
                       const daysRemaining = getDaysRemaining(deadline.dueDate, today);
                       return (
                         <TableRow key={deadline.id}>
-                          <TableCell className="font-medium">
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1.5 py-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold">{deadline.title}</span>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                                  {deadline.customDivision ?? deadline.division?.name ?? "Umum"}
+                                </Badge>
+                              </div>
+                              {deadline.description && (
+                                <p className="text-sm text-muted-foreground line-clamp-2 max-w-[500px]" title={deadline.description}>
+                                  {deadline.description}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">
                             {formatDate(deadline.dueDate)}
                           </TableCell>
-                          <TableCell>{deadline.title}</TableCell>
+                          <TableCell>{renderDeadlineBadge(daysRemaining)}</TableCell>
                           <TableCell>
-                            {deadline.customDivision ?? deadline.division?.name ?? "Umum"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground max-w-[360px]">
-                            {deadline.description ? (
-                              <p className="line-clamp-2 break-words" title={deadline.description}>
-                                {deadline.description}
-                              </p>
+                            {deadline.completed ? (
+                              <Badge variant="default">Selesai</Badge>
                             ) : (
-                              "-"
+                              <Badge variant="destructive">Belum</Badge>
                             )}
                           </TableCell>
-                          <TableCell>{renderDeadlineBadge(daysRemaining)}</TableCell>
                           {isAdmin && (
-                            <TableCell className="flex justify-end">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEdit(deadline)}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDelete(deadline)}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Hapus
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  onClick={() => handleEdit(deadline)}
+                                  variant="outline"
+                                  size="icon-sm"
+                                  title="Edit"
+                                >
+                                  <Pencil />
+                                </Button>
+                                <Button
+                                  onClick={() => handleDelete(deadline)}
+                                  variant="outline"
+                                  size="icon-sm"
+                                  className="text-destructive hover:text-destructive"
+                                  title="Hapus"
+                                >
+                                  <Trash2 />
+                                </Button>
+                                <Button
+                                  onClick={() => handleDone(deadline)}
+                                  variant="outline"
+                                  size="icon-sm"
+                                  className="text-primary hover:text-primary"
+                                  title={deadline.completed ? "Batal Selesai" : "Tandai Selesai"}
+                                >
+                                  <Check />
+                                </Button>
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>
@@ -242,18 +281,23 @@ export default function DeadlinesPage() {
               </div>
 
               <div className="grid gap-3 lg:hidden">
-                {deadlines?.map((deadline) => {
+                {deadlines?.map((deadline, index) => {
                   const daysRemaining = getDaysRemaining(deadline.dueDate, today);
                   return (
                     <div
                       key={deadline.id}
-                      className="rounded-lg border bg-card p-4 shadow-sm"
+                      className="rounded-lg border bg-card p-4 shadow-sm space-y-3"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="text-base font-semibold leading-tight">
-                            {deadline.title}
-                          </p>
+                        <div className="space-y-1 w-full">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="secondary" className="shrink-0">
+                              #{index + 1}
+                            </Badge>
+                            <span className="font-semibold capitalize leading-snug">
+                              {deadline.title}
+                            </span>
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {formatDate(deadline.dueDate)} • {deadline.customDivision ?? deadline.division?.name ?? "Umum"}
                           </p>
@@ -262,31 +306,48 @@ export default function DeadlinesPage() {
                               {deadline.description}
                             </p>
                           )}
-                          {renderDeadlineBadge(daysRemaining)}
+                          <div className="flex gap-2 pt-1">
+                            {renderDeadlineBadge(daysRemaining)}
+                            {deadline.completed ? (
+                              <Badge variant="default">Selesai</Badge>
+                            ) : (
+                              <Badge variant="destructive">Belum</Badge>
+                            )}
+                          </div>
                         </div>
-                        {isAdmin && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(deadline)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(deadline)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Hapus
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
                       </div>
+                      
+                      {isAdmin && (
+                        <div className="flex items-center gap-2 pt-1 border-t">
+                          <Button
+                            onClick={() => handleEdit(deadline)}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                            Edit
+                          </Button>
+                          <Button
+                            onClick={() => handleDelete(deadline)}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                            Hapus
+                          </Button>
+                          <Button
+                            onClick={() => handleDone(deadline)}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-primary hover:text-primary"
+                          >
+                            <Check className="h-3.5 w-3.5 mr-1.5" />
+                            Selesai
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

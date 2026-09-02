@@ -7,6 +7,7 @@ export interface Deadline {
   title: string;
   description: string | null;
   dueDate: string;
+  completed?: boolean | null;
   divisionId: string | null;
   customDivision: string | null;
   division?: { id: string; name: string } | null;
@@ -105,6 +106,25 @@ export function useDeleteDeadline() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deleteDeadline,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deadlines"] });
+    },
+  });
+}
+
+export function useMarkDeadlineDone() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/deadlines/${id}/done`, {
+        method: "PATCH",
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update status");
+      }
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deadlines"] });
     },

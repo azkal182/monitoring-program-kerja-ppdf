@@ -67,6 +67,7 @@ model Deadline {
     title          String
     description    String?
     dueDate        DateTime  @db.Date
+    completed      Boolean?  @default(false)
     divisionId     String?
     division       Division? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
     customDivision String?
