@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, useRef, type CSSProperties } from "react";
 import { useSession } from "next-auth/react";
 import {
   addMonths,
@@ -88,6 +88,7 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(today));
   const [selectedDate, setSelectedDate] = useState<Date>(() => today);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const scheduleListRef = useRef<HTMLDivElement>(null);
 
   const monthParam = format(currentMonth, "yyyy-MM");
   const { data, isLoading, isFetching, refetch } = useProgramCalendar(monthParam);
@@ -152,7 +153,7 @@ export default function CalendarPage() {
       <CalendarDayButton
         {...props}
         className={cn(
-          "flex h-14 flex-col items-center justify-center gap-1 rounded-md border border-transparent transition-colors data-[selected-single=true]:border-primary/60 data-[selected-single=true]:bg-primary/15 data-[selected-single=true]:text-primary dark:data-[selected-single=true]:bg-primary/30",
+          "flex h-11 sm:h-12 md:h-14 w-full flex-col items-center justify-center gap-1 rounded-md border border-transparent transition-colors data-[selected-single=true]:border-primary/60 data-[selected-single=true]:bg-primary/15 data-[selected-single=true]:text-primary dark:data-[selected-single=true]:bg-primary/30",
           visibleEvents > 0
             ? "border-primary/30 bg-primary/5 text-foreground dark:border-primary/50 dark:bg-primary/25 dark:text-foreground"
             : hasEvents
@@ -165,7 +166,7 @@ export default function CalendarPage() {
         </span>
         <span
           className={cn(
-            "h-1.5 w-10 overflow-hidden rounded-full transition-all",
+            "h-1 w-6 sm:h-1.5 sm:w-8 md:w-10 overflow-hidden rounded-full transition-all",
             visibleEvents > 0
               ? "opacity-100"
               : hasEvents
@@ -190,6 +191,12 @@ export default function CalendarPage() {
       }
       actions={
         <div className="flex flex-wrap items-center gap-2">
+          {authSession?.user?.role === "ADMIN" && (
+            <Button size="sm" onClick={() => setIsAddEventOpen(true)}>
+              <Plus className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Tambah</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -197,10 +204,10 @@ export default function CalendarPage() {
               moveToMonth(subMonths(currentMonth, 1));
             }}
           >
-            <ChevronLeft className="mr-1 h-4 w-4" />
-            Sebelumnya
+            <ChevronLeft className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Sebelumnya</span>
           </Button>
-          <div className="rounded-lg border px-4 py-2 text-sm font-medium shadow-sm">
+          <div className="rounded-lg border px-3 sm:px-4 py-2 text-sm font-medium shadow-sm">
             {format(currentMonth, "MMMM yyyy", { locale: id })}
           </div>
           <Button
@@ -210,8 +217,8 @@ export default function CalendarPage() {
               moveToMonth(addMonths(currentMonth, 1));
             }}
           >
-            Berikutnya
-            <ChevronRight className="ml-1 h-4 w-4" />
+            <span className="hidden sm:inline">Berikutnya</span>
+            <ChevronRight className="h-4 w-4 sm:ml-1" />
           </Button>
         </div>
       }
@@ -225,11 +232,6 @@ export default function CalendarPage() {
                 <CalendarDays className="h-5 w-5" />
                 Kalender Bulanan
               </div>
-              {authSession?.user?.role === "ADMIN" && (
-                <Button size="sm" onClick={() => setIsAddEventOpen(true)}>
-                  <Plus className="mr-1 h-4 w-4" /> Tambah
-                </Button>
-              )}
             </CardTitle>
             <CardDescription>
               Zona waktu: {timezone.replace("_", " ")} •{" "}
@@ -251,7 +253,16 @@ export default function CalendarPage() {
                 month={currentMonth}
                 onMonthChange={moveToMonth}
                 selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedDate(date);
+                    if (window.innerWidth < 1024) {
+                      setTimeout(() => {
+                        scheduleListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 100);
+                    }
+                  }
+                }}
                 mode="single"
                 showOutsideDays
                 className="mx-auto"
@@ -266,7 +277,7 @@ export default function CalendarPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="shadow-sm" ref={scheduleListRef}>
           <CardHeader className="space-y-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <ListChecks className="h-5 w-5" />
@@ -280,8 +291,10 @@ export default function CalendarPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {selectedDayEvents.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Tidak ada agenda atau program bulanan yang terjadwal.
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 py-8 px-4 text-center">
+                <ListChecks className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">Tidak ada agenda atau program</p>
+                <p className="text-xs text-muted-foreground/80 mt-1">Belum ada aktivitas yang terjadwal untuk tanggal ini.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -351,8 +364,10 @@ export default function CalendarPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           {monthlyPrograms.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-              Tidak ada agenda atau program bulanan pada bulan ini.
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 py-10 px-4 text-center">
+              <CalendarDays className="h-12 w-12 text-muted-foreground/30 mb-4" />
+              <p className="text-sm font-medium text-muted-foreground">Tidak ada program bulan ini</p>
+              <p className="text-xs text-muted-foreground/80 mt-1">Anda dapat menikmati waktu luang atau menjadwalkan program baru.</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
