@@ -152,9 +152,32 @@ function drawEventsTable(
     const events = eventsByDate[dateStr];
     
     events.forEach((event, idx) => {
-      const movedToNewPage = ensureSpace(doc, rowHeight);
+      const rowData = {
+        ...event,
+        dateStr,
+        isFirstInDate: idx === 0,
+        index: idx,
+      };
+
+      // Calculate dynamic row height based on content
+      let maxTextHeight = 0;
+      columns.forEach((column) => {
+        const cellValue = column.value(rowData);
+        if (cellValue) {
+          doc
+            .font(column.label === "Tanggal" && rowData.isFirstInDate ? "Helvetica-Bold" : "Helvetica")
+            .fontSize(9.5);
+          const h = doc.heightOfString(cellValue, { width: column.width - 16 });
+          if (h > maxTextHeight) maxTextHeight = h;
+        }
+      });
+
+      const baseRowHeight = 28;
+      const dynamicRowHeight = Math.max(baseRowHeight, maxTextHeight + 18); // 9px top padding + 9px bottom padding
+
+      const movedToNewPage = ensureSpace(doc, dynamicRowHeight);
       if (movedToNewPage) {
-        drawTableHeader(doc, columns, rowHeight);
+        drawTableHeader(doc, columns, baseRowHeight);
       }
 
       let x = MARGIN;
@@ -162,18 +185,11 @@ function drawEventsTable(
 
       // Alternating row colors
       if (globalRowIndex % 2 === 1) {
-        doc.rect(x, y, CONTENT_WIDTH, rowHeight).fill("#f9fafb");
+        doc.rect(x, y, CONTENT_WIDTH, dynamicRowHeight).fill("#f9fafb");
       }
       
       doc.lineWidth(0.5).strokeColor(COLOR_BORDER);
-      doc.moveTo(MARGIN, y + rowHeight).lineTo(PAGE_WIDTH - MARGIN, y + rowHeight).stroke();
-
-      const rowData = {
-        ...event,
-        dateStr,
-        isFirstInDate: idx === 0,
-        index: idx,
-      };
+      doc.moveTo(MARGIN, y + dynamicRowHeight).lineTo(PAGE_WIDTH - MARGIN, y + dynamicRowHeight).stroke();
 
       columns.forEach((column) => {
         const cellValue = column.value(rowData);
@@ -187,10 +203,7 @@ function drawEventsTable(
             )
             .text(cellValue, x + 8, y + 9, {
               width: column.width - 16,
-              height: rowHeight - 9,
               align: column.align ?? "left",
-              ellipsis: true,
-              lineBreak: false,
             });
         }
         
@@ -198,7 +211,7 @@ function drawEventsTable(
         x += column.width;
       });
 
-      doc.y = y + rowHeight;
+      doc.y = y + dynamicRowHeight;
       globalRowIndex++;
     });
   });
