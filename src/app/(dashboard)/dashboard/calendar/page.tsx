@@ -20,6 +20,7 @@ import {
   Loader2,
   Minus,
   Plus,
+  Download,
 } from "lucide-react";
 
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
@@ -191,6 +192,17 @@ export default function CalendarPage() {
       }
       actions={
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              window.open(`/api/calendar/pdf?month=${monthParam}`, "_blank");
+            }}
+            title="Ekspor PDF Kalender"
+          >
+            <Download className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Ekspor PDF</span>
+          </Button>
           {authSession?.user?.role === "ADMIN" && (
             <Button size="sm" onClick={() => setIsAddEventOpen(true)}>
               <Plus className="h-4 w-4 sm:mr-1" />
