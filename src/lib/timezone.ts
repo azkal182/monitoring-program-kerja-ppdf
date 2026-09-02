@@ -21,12 +21,12 @@ export function getJakartaDateKey(input: Date | string = new Date()): string {
 
 export function startOfJakartaDayUtc(input: Date | string = new Date()): Date {
   const key = getJakartaDateKey(input);
-  return fromZonedTime(`${key} 00:00:00`, APP_TIME_ZONE);
+  return new Date(`${key}T00:00:00.000Z`);
 }
 
 export function endOfJakartaDayUtc(input: Date | string = new Date()): Date {
   const key = getJakartaDateKey(input);
-  return fromZonedTime(`${key} 23:59:59.999`, APP_TIME_ZONE);
+  return new Date(`${key}T23:59:59.999Z`);
 }
 
 export function getJakartaDayIndex(input: Date | string = new Date()): number {
@@ -38,12 +38,12 @@ export function startOfJakartaMonthUtc(input: Date | string = new Date()): Date 
   const jakartaDate = toJakartaDate(input);
   const monthStart = startOfMonth(jakartaDate);
   const key = getJakartaDateKey(monthStart);
-  return fromZonedTime(`${key} 00:00:00`, APP_TIME_ZONE);
+  return new Date(`${key}T00:00:00.000Z`);
 }
 
 export function endOfJakartaMonthUtc(input: Date | string = new Date()): Date {
   const jakartaDate = toJakartaDate(input);
   const monthEnd = endOfMonth(jakartaDate);
   const key = getJakartaDateKey(monthEnd);
-  return fromZonedTime(`${key} 23:59:59.999`, APP_TIME_ZONE);
+  return new Date(`${key}T23:59:59.999Z`);
 }
