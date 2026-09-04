@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import imageCompression from "browser-image-compression";
 
 export type UploadStatus =
   | "idle"
@@ -35,70 +36,34 @@ interface UploadDocumentOptions {
   onSuccess?: () => void;
 }
 
-// ─── Kompresi gambar di browser via Canvas ─────────────────────────────────
+// ─── Kompresi gambar di browser via library ────────────────────────────────
 
 async function compressImageClient(
   file: File,
-  maxDimension = 1920,
-  quality = 0.82
 ): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
+  const options = {
+    maxSizeMB: 0.3,
+    maxWidthOrHeight: 1280,
+    useWebWorker: true,
+    fileType: "image/webp",
+    initialQuality: 0.7,
+  };
 
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
+  try {
+    const compressedBlob = await imageCompression(file, options);
+    
+    let newExtension = ".webp";
+    if (compressedBlob.type === "image/jpeg") newExtension = ".jpg";
+    else if (compressedBlob.type === "image/png") newExtension = ".png";
 
-      let { width, height } = img;
-
-      // Resize jika melebihi maxDimension
-      if (width > maxDimension || height > maxDimension) {
-        if (width > height) {
-          height = Math.round((height * maxDimension) / width);
-          width = maxDimension;
-        } else {
-          width = Math.round((width * maxDimension) / height);
-          height = maxDimension;
-        }
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Canvas context tidak tersedia"));
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Gagal mengompresi gambar"));
-            return;
-          }
-          const compressed = new File(
-            [blob],
-            file.name.replace(/\.[^.]+$/, ".jpg"),
-            { type: "image/jpeg" }
-          );
-          resolve(compressed);
-        },
-        "image/jpeg",
-        quality
-      );
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("Gagal membaca gambar"));
-    };
-
-    img.src = objectUrl;
-  });
+    return new File(
+      [compressedBlob],
+      file.name.replace(/\.[^.]+$/, newExtension),
+      { type: compressedBlob.type }
+    );
+  } catch (error) {
+    throw new Error("Gagal mengompresi gambar dengan library.");
+  }
 }
 
 // ─── XHR upload dengan progress ────────────────────────────────────────────
